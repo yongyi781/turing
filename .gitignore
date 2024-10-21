@@ -5,3 +5,4 @@ release/
 
 *.exe
 *.gch
+compile_flags.txt

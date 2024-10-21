@@ -1,6 +1,4 @@
-#include "../pch.hpp"
-
-#include "../euler.hpp"
+#include "pch.hpp"
 #include "turing.hpp"
 
 using namespace std;

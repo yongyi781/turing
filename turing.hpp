@@ -46,7 +46,7 @@ inline std::string getBgStyle(char state)
 }
 
 /// Left or right.
-enum class direction : uint8_t
+enum class direction : int8_t
 {
     left,
     right
@@ -67,7 +67,9 @@ class Tape
     static constexpr size_t defaultPrintWidth = 50;
     static constexpr char zeroChar = ' ';
 
+    symbol &operator*() { return _data[_head + _offset]; }
     constexpr symbol operator*() const { return _data[_head + _offset]; }
+
     constexpr symbol operator[](ptrdiff_t i) const
     {
         auto j = _head + _offset + i;
@@ -75,6 +77,7 @@ class Tape
     }
 
     [[nodiscard]] const container_type &data() const { return _data; }
+    /// Returns the absolute position of the head.
     [[nodiscard]] constexpr int64_t head() const { return _head; }
     [[nodiscard]] constexpr int64_t offset() const { return _offset; }
 
@@ -89,7 +92,7 @@ class Tape
 
     constexpr void step(symbol x, direction d)
     {
-        _data[_head + _offset] = x;
+        **this = x;
         if (d == direction::left)
             moveLeft();
         else
@@ -97,7 +100,7 @@ class Tape
     }
 
     /// This variant leaves the symbol unchanged.
-    constexpr void step(direction dir) { step(_data[_head + _offset], dir); }
+    constexpr void step(direction dir) { step(**this, dir); }
 
     /// Returns a string representation of this tape.
     [[nodiscard]] constexpr std::string str(size_t width = defaultPrintWidth, std::string_view headPrefix = ">",
@@ -142,7 +145,7 @@ class Tape
                     s1 += toStringHelper(c);
                 c = 0;
                 sHead += headPrefix;
-                sHead += _data[_head + _offset] == 0 ? zeroChar : (char)('0' + _data[_head + _offset]);
+                sHead += **this == 0 ? zeroChar : (char)('0' + **this);
                 sHead += headSuffix;
             }
             else if (*it == 0)
@@ -183,7 +186,7 @@ class Tape
                 curr = (uint8_t)-1;
                 c = 0;
                 s += headPrefix;
-                s += (char)('0' + _data[_head + _offset]);
+                s += (char)('0' + **this);
                 s += headSuffix;
                 s += ' ';
             }
@@ -209,14 +212,14 @@ class Tape
     }
 
   private:
-    container_type _data = container_type(1, 0);
+    container_type _data{0};
     int64_t _head = _data.size() - 1;
     int64_t _offset = 0;
 
     constexpr void moveLeft()
     {
         --_head;
-        if (_head + _offset == -1)
+        if (_head + _offset < 0)
         {
             _data.insert(_data.begin(), 0);
             ++_offset;
@@ -226,7 +229,7 @@ class Tape
     constexpr void moveRight()
     {
         ++_head;
-        if (_head + _offset == (int64_t)_data.size())
+        if (_head + _offset >= (int64_t)_data.size())
             _data.push_back(0);
     }
 
@@ -290,7 +293,7 @@ class TuringMachine
     [[nodiscard]] constexpr char state() const { return _state; }
 
     /// Returns whether the Turing machine is halted, i.e. in the Z state.
-    [[nodiscard]] constexpr bool halted() const { return _state == 'Z'; }
+    [[nodiscard]] constexpr bool halted() const { return _state < 'A' || (size_t)(_state - 'A') >= numStates(); }
     [[nodiscard]] constexpr bool blank() const { return _tape.blank(); }
 
     [[nodiscard]] constexpr int64_t head() const { return _tape.head(); }
@@ -317,14 +320,16 @@ class TuringMachine
                           terminal ? ansi::str(ansi::reset) : "");
     }
 
-    void step()
+    /// Steps, and returns true if the machine advanced, false otherwise (for example, it was already halted).
+    bool step()
     {
-        if (_state == 'Z')
-            return;
+        if (halted())
+            return false;
         auto &&[b, dir, s] = _rule[_state - 'A', *_tape];
         _tape.step(b, dir);
         _state = s;
         ++_steps;
+        return true;
     }
 
     void reset()

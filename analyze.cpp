@@ -1,5 +1,4 @@
 #include "pch.hpp"
-
 #include "turing.hpp"
 
 using namespace std;

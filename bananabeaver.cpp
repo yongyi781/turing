@@ -1,5 +1,4 @@
-#include "../pch.hpp"
-
+#include "pch.hpp"
 #include "turing.hpp"
 
 using namespace std;
@@ -109,6 +108,7 @@ auto solve2()
     return numPeriods * pIncr + ps[indexExceed - 1];
 }
 
+// A Project Euler submission.
 // solve2 took 944.7 us.
 int main()
 {

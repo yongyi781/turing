@@ -1,6 +1,4 @@
-#include "../pch.hpp"
-
-#include "../euler.hpp"
+#include "pch.hpp"
 
 using namespace std;
 
@@ -106,17 +104,15 @@ auto compile(string_view code, bool decompile, bool quiet)
 int main(int argc, char *argv[])
 {
     auto args = span(argv, argc);
-    const char *code = "1RB3LA1LA1RA_2LA1RZ3RA3RB";
+    const char *code = "1RB1LC_0LA1RD_1LA0LC_0RB0RD";
     bool decompile = false;
     bool quiet = false;
     for (auto &&arg : args | views::drop(1))
-    {
         if (strcmp(arg, "-dec") == 0 || strcmp(arg, "-decompile") == 0)
             decompile = true;
         else if (strcmp(arg, "-q") == 0 || strcmp(arg, "-quiet") == 0)
             quiet = true;
         else
             code = arg;
-    }
     compile(code, decompile, quiet);
 }

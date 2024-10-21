@@ -2,6 +2,8 @@
 #include "turing.hpp"
 
 using namespace std;
+using namespace turing;
+using Int = int64_t;
 
 string getFgStyle(int index)
 {
@@ -24,210 +26,92 @@ string getFgStyle(int index)
     }
 }
 
-array<size_t, 4> hist{1};
-
-void print(const turing::TuringMachine &m)
+inline vector<int> analyze(turing::TuringMachine machine, char stateToAnalyze, size_t steps = 10000,
+                           size_t printWidth = 60)
 {
-    cout << std::setw(5) << m.steps();
-    cout << " | " << hist;
-    cout << " | " << m.str(true, 80) << " | ";
-    // cout << m.str1(true);
-    cout << '\n';
-}
-
-auto run(turing::TuringMachine m, int pauseMs = 0, char stateFilter = '\0')
-{
-    print(m);
-    while (!m.halted())
-    {
-        m.step();
-        ++hist[m.state() - 'A'];
-        if (stateFilter == '\0' || m.state() == stateFilter)
-        {
-            print(m);
-            if (pauseMs > 0)
-                this_thread::sleep_for(chrono::milliseconds(pauseMs));
-        }
-    }
-    return m.steps();
-}
-
-ostream &printSegment(ostream &o, const vector<uint8_t> &v, int headPos, char state)
-{
-    if (headPos == -1)
-        o << turing::getBgStyle(state) << ' ' << ansi::reset;
-    for (size_t i = 0; i < v.size(); ++i)
-        if (headPos == (int)i)
-            o << turing::getBgStyle(state) << (char)('0' + v[i]) << ansi::reset;
-        else
-            o << (char)('0' + v[i]);
-    if (headPos == (int)v.size())
-        o << turing::getBgStyle(state) << ' ' << ansi::reset;
-    return o;
-}
-
-vector<int> analyze(turing::TuringMachine machine, char stateToAnalyze, size_t steps = 10000,
-                    size_t printWidth = turing::Tape::defaultPrintWidth)
-{
-    using T = tuple<vector<uint8_t>, int, vector<uint8_t>, int>;
-    size_t width2 = 60;
-
     if (machine.state() == stateToAnalyze)
         cout << setw(7) << machine.steps() << " | " << machine.str(true, printWidth) << '\n';
 
-    vector tapeData = machine.tape().data();
-    int headPos = machine.tape().head();
-    int offset = 0;
-    int ld = 0;
-    int hd = 0;
+    auto tape = machine.tape();
+    int64_t lh = tape.head();
+    int64_t hh = tape.head();
 
-    boost::unordered_flat_map<T, int> tMap;
+    boost::unordered_flat_map<packed_transition, int> tMap;
     vector<int> ts;
     int counter = 0;
     bool first = !(machine.state() == stateToAnalyze);
 
-    for (size_t i = 0; i < steps; ++i)
+    for (size_t i = 0; i < steps && !machine.halted(); ++i)
     {
-        auto &&[b, dir, s2] = machine.rule()[machine.state() - 'A', *machine.tape()];
-        offset += dir == turing::direction::right ? 1 : -1;
         machine.step();
-        if (machine.state() != 'Z' && machine.state() != stateToAnalyze)
+        if (!machine.halted() && machine.state() != stateToAnalyze)
         {
-            ld = min(ld, offset);
-            hd = max(hd, offset);
+            lh = min(lh, machine.tape().head());
+            hh = max(hh, machine.tape().head());
         }
         else
         {
             // Print the result
             ostringstream ss;
-            tapeData.resize(machine.tape().data().size());
-            if (headPos + ld < 0)
-            {
-                tapeData.insert(tapeData.begin(), -headPos - ld, 0);
-                headPos = -ld;
-            }
-            auto fromRange = ranges::subrange(tapeData.begin() + headPos + ld, tapeData.begin() + headPos + hd + 1) |
-                             ranges::to<vector>();
-            int fromIndex = -ld;
-            tapeData = machine.tape().data();
-            headPos = machine.tape().head();
-            auto toRange = ranges::subrange(tapeData.begin() + headPos - offset + ld,
-                                            tapeData.begin() + headPos - offset + hd + 1) |
-                           ranges::to<vector>();
-            int toIndex = offset - ld;
             ss << setw(7) << machine.steps() << " | " << machine.str(true, printWidth) << " | ";
-            ss << machine.str1(true, width2) << " | ";
+            // ss << machine.str1(true, width2) << " | ";
             if (first)
-            {
-                cout << std::move(ss).str() << '\n';
                 first = false;
-            }
             else
             {
-                tuple key{fromRange, fromIndex, toRange, toIndex};
+                auto fromSegment = getTapeSegment(tape, stateToAnalyze, lh, hh);
+                auto toSegment = getTapeSegment(machine.tape(), machine.state(), lh, hh);
+                packed_transition key{fromSegment, toSegment};
                 if (!tMap.contains(key))
                     tMap[key] = counter++;
                 int mIndex = tMap[key];
                 ts.push_back(mIndex + 1);
-                ss << getFgStyle(mIndex) << setw(4) << "T" + to_string(mIndex + 1) << ansi::reset << " = [";
-                printSegment(ss, fromRange, fromIndex, stateToAnalyze) << " → ";
-                if (machine.state() == 'Z')
-                    ss << 'Z';
-                else
-                    printSegment(ss, toRange, toIndex, stateToAnalyze);
-                int x = toIndex - fromIndex;
-                ss << "] (" << (x < 0 ? '-' : '+') << abs(x) << ")";
-                // if (mIndex == 3)
-                cout << std::move(ss).str() << '\n';
+                auto x = machine.head() - tape.head();
+                ss << getFgStyle(mIndex) << setw(4) << "T" + to_string(mIndex + 1) << ansi::reset << " = [" << key
+                   << "] (" << (x < 0 ? '-' : '+') << abs(x) << ")";
             }
-            // if (machine.tape().head() == machine.tape().data().end() - 1)
-            offset = ld = hd = 0;
-            if (machine.state() == 'Z')
-                break;
+            cout << std::move(ss).str() << '\n';
+            tape = machine.tape();
+            lh = hh = machine.head();
         }
     }
+    cout << "transitions = " << ts.size() << " | distinct transitions = " << tMap.size() << '\n';
     return ts;
 }
 
 inline turing::TuringMachine universal23() { return {"1RB2LA1LA_2LA2RB0RA"}; }
 inline turing::TuringMachine bb622() { return {"1RB0RF_1RC0LD_1LB1RC_---0LE_1RA1LE_---0RC"}; }
 
-string formatRule(const turing::TuringMachine::rule_type &rule)
+auto solve(string code, char state, size_t steps)
 {
-    string s;
-    for (size_t i = 0; i < rule.rows(); ++i)
+    auto res = analyze(std::move(code), state, steps);
+    return it::wrap(res).map fun(x, (char)(x >= 10 ? 'A' + x - 10 : '0' + x)).to<string>();
+}
+
+int main(int argc, char *argv[])
+{
+    span args(argv, argc);
+    string code = "1RB0LC_1RC1RB_1LA0LD_0LC0RB";
+    char state = 'A';
+    Int steps = 1000;
+    if (argc > 1)
     {
-        if (i != 0)
-            s += "_";
-        for (size_t j = 0; j < rule.columns(); ++j)
+        code = args[1];
+        if (ranges::count(code, '_') == 0)
         {
-            auto &&[symbol, dir, state] = rule[i, j];
-            s += (char)('0' + symbol);
-            s += dir == turing::direction::left ? 'L' : 'R';
-            s += state;
+            cout << "Usage: analyze <code> [steps]\n";
+            return 0;
         }
     }
-    return s;
-}
-
-bool enumTuringRules(int numStates, int numSymbols, auto f)
-{
-    using R = turing::TuringMachine::rule_type;
-    using V = R::value_type;
-    vector<V> trs = views::cartesian_product(range((uint8_t)0, (uint8_t)(numSymbols - 1)),
-                                             array{turing::direction::left, turing::direction::right},
-                                             range('A', (char)('A' + numStates - 1))) |
-                    ranges::to<vector>();
-    return it::power(trs, numSymbols * numStates - 1)([&](auto &&t) {
-        R rule(numStates, numSymbols);
-        rule[0, 0] = {1, turing::direction::right, 'B'};
-        for (size_t i = 0; i < t.size(); ++i)
-            rule[(i + 1) / numSymbols, (i + 1) % numSymbols] = t[i];
-        if (!it::callbackResult(f, rule))
-            return it::result_break;
-        return it::result_continue;
-    });
-}
-
-bool allStatesReachable(turing::TuringMachine::rule_type rule)
-{
-    int nStates = rule.rows();
-    int nSymbols = rule.columns();
-    vector visited(nStates, false);
-    vector<char> s{'A'};
-    while (!s.empty())
+    if (argc > 2)
     {
-        auto state = s.back();
-        s.pop_back();
-        for (int symbol = 0; symbol < nSymbols; ++symbol)
-        {
-            auto &&[_, dir, next] = rule[state - 'A', symbol];
-            if (next >= 'A' && next < 'A' + nStates && next != state && !visited[next - 'A'])
-            {
-                visited[next - 'A'] = true;
-                s.push_back(next);
-            }
-        }
+        if (argc == 3 && strlen(args[2]) > 1)
+            steps = stoull(args[2]);
+        else
+            state = toupper(args[2][0]);
     }
-    return all_of(visited.begin(), visited.end(), identity{});
-}
-
-auto solve()
-{
-    // string code;
-    // code = "1RB1LF_1LB1LC_1RD0LE_---0RB_0RC0LA_1RC0RF";
-    // cout << "Enter code: ";
-    // cin >> code;
-    // cout << "Turing machine = " << code << '\n';
-    auto res = analyze(turing::known::boydJohnson(), 'A', 1000, 40);
-    // auto res = findTranslatedCyclerPeriod({"1RB1LA_0LA0RA_1LA0RA"}, 1000, 50000);
-    return res;
-    // return it::wrap(res).map fun(x, (char)('0' + x)).to<string>();
-    // run({code}, 0, 'A');
-}
-
-int main()
-{
-    // ios::sync_with_stdio(false);
-    printTiming(solve);
+    if (argc > 3)
+        steps = stoull(args[3]);
+    ios::sync_with_stdio(false);
+    printTiming(solve, std::move(code), state, steps);
 }

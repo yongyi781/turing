@@ -6,29 +6,6 @@ using namespace std;
 inline turing::TuringMachine universal23() { return {"1RB2LA1LA_2LA2RB0RA"}; }
 inline turing::TuringMachine bb622() { return {"1RB0RF_1RC0LD_1LB1RC_---0LE_1RA1LE_---0RC"}; }
 
-string formatRule(const turing::TuringMachine::rule_type &rule)
-{
-    string s;
-    for (size_t i = 0; i < rule.rows(); ++i)
-    {
-        if (i != 0)
-            s += "_";
-        for (size_t j = 0; j < rule.columns(); ++j)
-        {
-            auto &&[symbol, dir, state] = rule[i, j];
-            if (state == '\0')
-                s += "---";
-            else
-            {
-                s += (char)('0' + symbol);
-                s += dir == turing::direction::left ? 'L' : 'R';
-                s += state;
-            }
-        }
-    }
-    return s;
-}
-
 // bool isLNF(const turing::TuringMachine::rule_type &rule){
 
 //     for (size_t i = 0; i < rule.rows(); ++i)
@@ -44,10 +21,10 @@ bool enumTuringRules(int numStates, int numSymbols, auto f)
 {
     using R = turing::TuringMachine::rule_type;
     using V = R::value_type;
-    vector<V> trs = views::cartesian_product(range((uint8_t)0, (uint8_t)(numSymbols - 1)),
-                                             array{turing::direction::left, turing::direction::right},
-                                             range('A', (char)('A' + numStates - 1))) |
-                    ranges::to<vector>();
+    auto trs = views::cartesian_product(range((uint8_t)0, (uint8_t)(numSymbols - 1)),
+                                        array{turing::direction::left, turing::direction::right},
+                                        range('A', (char)('A' + numStates - 1))) |
+               ranges::to<vector>();
     R r(numStates, numSymbols);
     r[0, 0] = {1, turing::direction::right, 'B'};
     return it::tree_preorder(

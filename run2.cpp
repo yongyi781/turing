@@ -38,7 +38,6 @@ auto solve()
         if (arr.size() >= 3)
             maxSteps = stoull(arr[2]);
         TuringMachine m{arr[0]};
-        // auto m = turing::known::boydJohnson();
         print(m);
         int64_t prev = 1;
         size_t million = 0;
@@ -50,8 +49,7 @@ auto solve()
                 million = m.tape().size();
             if (*m.tape() == 0 && (matchState == '\0' || m.state() == matchState))
             {
-                cout << fixed << setprecision(15) << (double)m.steps() / prev << " | ";
-                // cout << setw(8) << m.steps() - prev << " | ";
+                cout << fixed << setprecision(10) << (double)m.steps() / prev << " | ";
                 print(m);
                 prev = m.steps();
             }

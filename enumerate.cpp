@@ -6,29 +6,6 @@ using namespace std;
 inline turing::TuringMachine universal23() { return {"1RB2LA1LA_2LA2RB0RA"}; }
 inline turing::TuringMachine bb622() { return {"1RB0RF_1RC0LD_1LB1RC_---0LE_1RA1LE_---0RC"}; }
 
-string formatRule(const turing::TuringMachine::rule_type &rule)
-{
-    string s;
-    for (size_t i = 0; i < rule.rows(); ++i)
-    {
-        if (i != 0)
-            s += "_";
-        for (size_t j = 0; j < rule.columns(); ++j)
-        {
-            auto &&[symbol, dir, state] = rule[i, j];
-            if (state == '\0')
-                s += "---";
-            else
-            {
-                s += (char)('0' + symbol);
-                s += dir == turing::direction::left ? 'L' : 'R';
-                s += state;
-            }
-        }
-    }
-    return s;
-}
-
 // bool isLNF(const turing::TuringMachine::rule_type &rule){
 
 //     for (size_t i = 0; i < rule.rows(); ++i)
@@ -44,10 +21,10 @@ bool enumTuringRules(int numStates, int numSymbols, auto f)
 {
     using R = turing::TuringMachine::rule_type;
     using V = R::value_type;
-    vector<V> trs = views::cartesian_product(range((uint8_t)0, (uint8_t)(numSymbols - 1)),
-                                             array{turing::direction::left, turing::direction::right},
-                                             range('A', (char)('A' + numStates - 1))) |
-                    ranges::to<vector>();
+    auto trs = views::cartesian_product(range((uint8_t)0, (uint8_t)(numSymbols - 1)),
+                                        array{turing::direction::left, turing::direction::right},
+                                        range('A', (char)('A' + numStates - 1))) |
+               ranges::to<vector>();
     R r(numStates, numSymbols);
     r[0, 0] = {1, turing::direction::right, 'B'};
     return it::tree_preorder(
@@ -111,11 +88,11 @@ auto solve()
 
     map<int, int> hist;
     int64_t total = 0;
-    ofstream fout("turing_machines/analyze_out2.txt");
+    ofstream fout("data/analyze_out2.txt");
     fout << fixed << setprecision(3);
     constexpr int nSteps = 1'000'000;
     // constexpr int tapeSizeBound = isqrt(nSteps);
-    enumTuringRules(4, 2, [&](auto &&r) {
+    enumTuringRules(3, 2, [&](auto &&r) {
         if (!allStatesReachable(r))
             return;
         ++total;
@@ -123,7 +100,7 @@ auto solve()
         ++hist[p];
         // if (p == 0 || p >= 100)
         // cout << setw(4) << p << " | " << formatRule(r) << '\n';
-        if (p == 0)
+        if (p == 2)
         {
             turing::TuringMachine m{r};
             size_t tapeSize2 = 0;
@@ -158,7 +135,7 @@ auto solve()
     return total;
 }
 
-inline bool findTranslatedCyclerPeriodExact(turing::TuringMachine machine, size_t period = 100)
+inline bool isPeriodic(turing::TuringMachine machine, size_t period = 100)
 {
     auto startTape = machine.tape();
     auto startState = machine.state();
@@ -202,8 +179,8 @@ auto solve2()
             continue;
         }
         turing::TuringMachine m{s};
-        int64_t maxPreperiod = 100'000'000'000LL;
-        auto period = turing::findTranslatedCyclerPeriod(m, maxPreperiod, 100'000'000'000LL);
+        int64_t maxPreperiod = 400'000'000LL;
+        auto period = turing::findTranslatedCyclerPeriod(m, maxPreperiod, 8'000'000LL);
         if (period == 0)
         {
             cout << "Period not found.\n";
@@ -219,7 +196,7 @@ auto solve2()
             auto copy = m;
             for (int i = 0; i < mid; ++i)
                 copy.step();
-            if (findTranslatedCyclerPeriodExact(std::move(copy), period))
+            if (isPeriodic(std::move(copy), period))
             {
                 cout << "Preperiod " << mid << " ✅\n";
                 high = mid;
@@ -237,6 +214,6 @@ auto solve2()
 int main()
 {
     // ios::sync_with_stdio(false);
-    // printTiming(solve);
-    printTiming(solve2);
+    printTiming(solve);
+    // printTiming(solve2);
 }

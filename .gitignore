@@ -6,3 +6,5 @@ release/
 *.exe
 *.gch
 compile_flags.txt
+test*.cpp
+bananabeaver.cpp

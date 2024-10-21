@@ -9,7 +9,6 @@ param (
 )
 
 $ErrorActionPreference = 'Stop'
-# $PSNativeCommandUseErrorActionPreference = $true
 
 $mode = $DebugPreference ? "debug" : "release"
 $content = Get-Content -Path $File -Raw
@@ -34,11 +33,7 @@ $clangArgs = $(
     "-march=native",
     "-pthread",
     "-isystem",
-    "C:\tools\ntl\include",
-    "-isystem",
     "C:\tools\primecount\include",
-    "-isystem",
-    "C:\GitHub\cppitertools",
     "-isystem",
     "C:/Projects/euler/include",
     "-L",
@@ -50,12 +45,6 @@ $clangArgs = $(
     "$outputFile",
     "-lstdc++exp",
     "-ltbb12",
-    # "-lfmt",
-    "-lntl",
-    "-lprimecount",
-    "-lprimesieve",
-    # "-lmpc",
-    # "-lmpfr",
     "-lgmp",
     "-Wl,-s"
 )

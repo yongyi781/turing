@@ -1,0 +1,6 @@
+-isystem
+C:/tools/primecount/include
+-isystem
+../euler/include
+-include-pch
+release/euler.pch

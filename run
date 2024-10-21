@@ -1,0 +1,140 @@
+#!/bin/bash
+
+set -e
+
+std="c++26"
+mode="release"
+for option in "$@"; do
+    case $option in
+        -d | --debug) mode="debug";;
+        -r | --rebuild) rebuild=true;;
+        -t | --time-report) timeReport=true;;
+        -v | --verbose) verbose=true;;
+        -\? | -h | --help)
+            echo "Usage: $0 [-d | --debug] [-r | --rebuild] [-t | --time-report] [-v | --verbose] <file>"
+            exit 0;;
+        -*) echo "Unknown option: $option"; exit 1;;
+        *)file=$option;;
+   esac
+done
+
+# std=${2:-"c++26"}
+
+if grep -Pq "^#include \"(\.\./)?pch\.hpp\"" $file; then
+    usePch=true
+fi
+
+# TODO: Implement stack size...
+
+if grep -q "// sanitize" "$file"; then
+    sanitize=true
+fi
+
+outputFile="$mode/$(basename "$file" .cpp)"
+clangArgs=(
+    "-fcolor-diagnostics"
+    "-fno-caret-diagnostics"
+    "-fansi-escape-codes"
+    "-Wall"
+    "-Wextra"
+    "-Weffc++"
+    "-Wdocumentation"
+    "-pedantic"
+    "-std=$std"
+    $([ $mode == "debug" ] && echo "-O0" || echo "-O3")
+    $([ $mode == "debug" ] && echo "-g" || echo "")
+    "-march=native"
+    "-pthread"
+    "$file"
+    "-o"
+    "$outputFile"
+    "-lstdc++exp"
+    "-ltbb"
+    "-lntl"
+    "-lprimecount"
+    "-lprimesieve"
+    # "-lmpc"
+    # "-lmpfr"
+    "-lgmp"
+    "-Wl,-s"
+)
+if [[ $usePch == true ]]; then
+    clangArgs+=("-include-pch" "$mode/euler.pch")
+fi
+if [[ $verbose == true ]]; then
+    clangArgs+=("-v")
+fi
+if [[ $sanitize == true ]]; then
+    clangArgs+=("-fsanitize=undefined,nullability")
+fi
+if [[ $timeReport == true ]]; then
+    clangArgs+=("-ftime-trace")
+fi
+
+build_file() {
+    if [[ $rebuild != true ]] then
+        if [[ -x "$outputFile" ]]; then
+            last_build_time=$(stat -c %Y "$outputFile" 2>/dev/null || echo 0)
+            source_time=$(stat -c %Y "$file")
+            rebuild=false
+
+            if [[ $source_time -gt $last_build_time ]] || [[ $std != "c++26" ]] || [[ $timeReport == true ]]; then
+                rebuild=true
+            fi
+        else
+            rebuild=true
+        fi
+    fi
+
+    if [[ $rebuild == true ]]; then
+        echo -e "\033[94mBuilding in $mode mode$([[ $usePch == true ]] || echo " without PCH")$([[ $sanitize == true ]] && echo " with sanitizers" || echo "")...\033[0m"
+        build_start_time=$(date +%s%N)
+        clang++ "${clangArgs[@]}"
+        compileExitCode=$?
+        build_end_time=$(date +%s%N)
+        color=$([[ $compileExitCode == 0 ]] && echo "32" || echo "31")
+        echo -e "\033[${color}mBuild $([[ $compileExitCode == 0 ]] && echo "succeeded" || echo "failed") in $(echo "scale=2; ($build_end_time - $build_start_time) / 1000000000" | bc) seconds.\033[0m"
+        return $compileExitCode
+    fi
+}
+
+if build_file; then
+    "$outputFile"
+    if [[ $? -ne 0 ]]; then
+        case $? in
+            -2147483645)
+                message="Breakpoint"
+                ;;
+            -1073741819)
+                message="Segmentation fault"
+                ;;
+            -1073741795)
+                message="Illegal instruction"
+                ;;
+            -1073741676)
+                message="Integer division by zero"
+                ;;
+            -1073741571)
+                message="Stack overflow"
+                ;;
+            -1073741511)
+                message="Entry point not found"
+                ;;
+            -1073740940)
+                message="Heap corrupted"
+                ;;
+            -1073740791)
+                message="Unhandled C++ exception"
+                ;;
+            -1073741569)
+                message="Malformed function table"
+                ;;
+            *)
+                message="Program failed"
+                ;;
+        esac
+        echo -e "\033[${color}m$message (exit code $? / 0x$(echo "obase=16; ibase=10; $?" | bc))\033[0m"
+    fi
+    exit $?
+fi
+

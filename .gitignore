@@ -1,0 +1,7 @@
+data/
+.vscode/
+debug/
+release/
+
+*.exe
+*.gch

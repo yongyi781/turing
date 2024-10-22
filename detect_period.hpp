@@ -80,23 +80,24 @@ class CyclerDetector
     [[nodiscard]] constexpr bool verbose() const { return _verbose; }
 
     [[nodiscard]]
-    find_period_result findPeriod(TuringMachine m, size_t periodBound, size_t maxSteps) const
+    find_period_result findPeriod(TuringMachine machine, size_t periodBound, size_t maxSteps) const
     {
-        TuringMachine prev2 = m;
-        while (m.steps() <= maxSteps)
+        TuringMachine prev2 = machine;
+        maxSteps += machine.steps();
+        while (machine.steps() <= maxSteps)
         {
             if (_verbose)
-                std::cout << m.steps() << " | " << m.str(true) << '\n';
-            TuringMachine prev = m;
+                std::cout << machine.steps() << " | " << machine.str(true) << '\n';
+            TuringMachine prev = machine;
             int64_t lh = prev.head();
             int64_t hh = prev.head();
             for (size_t i = 1; i <= periodBound; ++i)
             {
-                m.step();
-                lh = std::min(lh, m.head());
-                hh = std::max(hh, m.head());
-                if (m.head() == prev.head() && checkForPeriod(prev, m, lh, hh))
-                    return {i, m.steps() - i, m.head() - prev.head(), std::move(prev2)};
+                machine.step();
+                lh = std::min(lh, machine.head());
+                hh = std::max(hh, machine.head());
+                if (machine.head() == prev.head() && checkForPeriod(prev, machine, lh, hh))
+                    return {i, machine.steps() - i, machine.head() - prev.head(), std::move(prev2)};
             }
             prev2 = prev;
         }
@@ -140,25 +141,26 @@ class TranslatedCyclerDetector : public CyclerDetector
     /// Finds a period for the given Turing machine rule code with the given period bound. The returned preperiod is
     /// only an upper bound.
     [[nodiscard]]
-    find_period_result findPeriod(TuringMachine m, size_t periodBound, size_t maxSteps) const
+    find_period_result findPeriod(TuringMachine machine, size_t periodBound, size_t maxSteps) const
     {
-        TuringMachine prev2 = m;
-        while (m.steps() <= maxSteps)
+        TuringMachine prev2 = machine;
+        maxSteps += machine.steps();
+        while (machine.steps() <= maxSteps)
         {
             TuringMachine prev;
             int expandDir = 0;
             // Grab edge tape
             for (size_t i = 0; i < periodBound; ++i)
             {
-                auto &&[success, expanded] = m.step();
+                auto &&[success, expanded] = machine.step();
                 if (!success)
                     return {};
                 if (expanded)
                 {
-                    prev = m;
-                    expandDir = m.head() < 0 ? -1 : 1;
+                    prev = machine;
+                    expandDir = machine.head() < 0 ? -1 : 1;
                     if (verbose())
-                        std::cout << m.steps() << " | " << m.str(true) << '\n';
+                        std::cout << machine.steps() << " | " << machine.str(true) << '\n';
                     break;
                 }
             }
@@ -170,25 +172,25 @@ class TranslatedCyclerDetector : public CyclerDetector
             int64_t hh = prev.head();
             for (size_t p = 1; p <= periodBound; ++p)
             {
-                auto &&[success, expanded] = m.step();
+                auto &&[success, expanded] = machine.step();
                 if (!success)
                     return {};
-                lh = std::min(lh, m.head());
-                hh = std::max(hh, m.head());
-                if (expanded && m.state() == prev.state())
+                lh = std::min(lh, machine.head());
+                hh = std::max(hh, machine.head());
+                if (expanded && machine.state() == prev.state())
                 {
-                    int expandDir2 = m.head() < 0 ? -1 : 1;
+                    int expandDir2 = machine.head() < 0 ? -1 : 1;
                     if (expandDir != expandDir2)
                         continue;
 
-                    auto l = m.head() < 0 ? 0 : lh - prev.head();
-                    auto h = m.head() < 0 ? hh - prev.head() : 0;
-                    if (spansEqual(prev.tape(), m.tape(), l, h))
+                    auto l = machine.head() < 0 ? 0 : lh - prev.head();
+                    auto h = machine.head() < 0 ? hh - prev.head() : 0;
+                    if (spansEqual(prev.tape(), machine.tape(), l, h))
                     {
                         if (verbose())
-                            std::cout << ansi::green << ansi::bold << "[found] " << ansi::reset << m.steps() << " | "
-                                      << m.str(true) << '\n';
-                        return {p, m.steps() - p, m.head() - prev.head(), std::move(prev2)};
+                            std::cout << ansi::green << ansi::bold << "[found] " << ansi::reset << machine.steps()
+                                      << " | " << machine.str(true) << '\n';
+                        return {p, machine.steps() - p, machine.head() - prev.head(), std::move(prev2)};
                     }
                 }
             }

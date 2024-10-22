@@ -2,6 +2,7 @@
 #include "turing.hpp"
 
 using namespace std;
+using namespace turing;
 
 inline turing::TuringMachine universal23() { return {"1RB2LA1LA_2LA2RB0RA"}; }
 inline turing::TuringMachine bb622() { return {"1RB0RF_1RC0LD_1LB1RC_---0LE_1RA1LE_---0RC"}; }
@@ -19,24 +20,22 @@ inline turing::TuringMachine bb622() { return {"1RB0RF_1RC0LD_1LB1RC_---0LE_1RA1
 
 bool enumTuringRules(int numStates, int numSymbols, auto f)
 {
-    using R = turing::TuringMachine::rule_type;
-    using V = R::value_type;
-    auto trs = views::cartesian_product(range((uint8_t)0, (uint8_t)(numSymbols - 1)),
-                                        array{turing::direction::left, turing::direction::right},
-                                        range('A', (char)('A' + numStates - 1))) |
-               ranges::to<vector>();
-    R r(numStates, numSymbols);
-    r[0, 0] = {1, turing::direction::right, 'B'};
+    auto trs =
+        views::cartesian_product(range((symbol_type)0, (symbol_type)(numSymbols - 1)),
+                                 array{turing::direction::left, turing::direction::right}, range(0, numStates - 1)) |
+        ranges::to<vector>();
+    turing_rule r(numStates, numSymbols);
+    r[0, 0] = {1, turing::direction::right, 1};
     return it::tree_preorder(
-        pair{1, 'C'},
+        pair{1, 2},
         [&](auto &&t, auto rec) {
             auto &&[i, nextValid] = t;
-            for (uint8_t symbol = 0; symbol < (uint8_t)numSymbols; ++symbol)
+            for (symbol_type symbol = 0; (int)symbol < numSymbols; ++symbol)
                 for (turing::direction dir : {turing::direction::left, turing::direction::right})
-                    for (char state = 'A'; state <= min(nextValid, (char)('A' + numStates - 1)); ++state)
+                    for (state_type state = 0; state <= min(nextValid, numStates - 1); ++state)
                     {
                         r[i / numSymbols, i % numSymbols] = {symbol, dir, state};
-                        rec({i + 1, max((char)(state + 1), nextValid)});
+                        rec({i + 1, max(state + 1, nextValid)});
                     }
             return it::result_continue;
         },
@@ -55,17 +54,17 @@ bool allStatesReachable(const turing::TuringMachine::rule_type &rule)
     int nStates = rule.rows();
     int nSymbols = rule.columns();
     array<bool, maxStates> visited{};
-    vector<char> s{'A'};
+    vector<char> s{0};
     while (!s.empty())
     {
         auto state = s.back();
         s.pop_back();
         for (int symbol = 0; symbol < nSymbols; ++symbol)
         {
-            auto &&[_, dir, next] = rule[state - 'A', symbol];
-            if (next >= 'A' && next < 'A' + nStates && next != state && !visited[next - 'A'])
+            auto &&[_, dir, next] = rule[state, symbol];
+            if (next >= 0 && next < nStates && next != state && !visited[next])
             {
-                visited[next - 'A'] = true;
+                visited[next] = true;
                 s.push_back(next);
             }
         }
@@ -75,17 +74,6 @@ bool allStatesReachable(const turing::TuringMachine::rule_type &rule)
 
 auto solve()
 {
-    // string code;
-    // code = "1RB1LF_1LB1LC_1RD0LE_---0RB_0RC0LA_1RC0RF";
-    // cout << "Enter code: ";
-    // cin >> code;
-    // cout << "Turing machine = " << code << '\n';
-    // auto res = analyze(turing::known::boydJohnson(), 'A', 1000, 40);
-    // auto res = findTranslatedCyclerPeriod({"1RB1LA_0LA0RA_1LA0RA"}, 1000, 50000);
-    // return res;
-    // return it::wrap(res).map fun(x, (char)('0' + x)).to<string>();
-    // run({code}, 0, 'A');
-
     map<int, int> hist;
     int64_t total = 0;
     ofstream fout("data/analyze_out2.txt");

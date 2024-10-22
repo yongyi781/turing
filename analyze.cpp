@@ -26,7 +26,7 @@ string getFgStyle(int index)
     }
 }
 
-inline vector<int> analyze(turing::TuringMachine machine, char stateToAnalyze, size_t steps = 10000,
+inline vector<int> analyze(turing::TuringMachine machine, state_type stateToAnalyze, size_t steps = 10000,
                            size_t printWidth = 60)
 {
     if (machine.state() == stateToAnalyze)
@@ -82,7 +82,7 @@ inline vector<int> analyze(turing::TuringMachine machine, char stateToAnalyze, s
 inline turing::TuringMachine universal23() { return {"1RB2LA1LA_2LA2RB0RA"}; }
 inline turing::TuringMachine bb622() { return {"1RB0RF_1RC0LD_1LB1RC_---0LE_1RA1LE_---0RC"}; }
 
-auto solve(string code, char state, size_t steps)
+auto solve(string code, state_type state, size_t steps)
 {
     auto res = analyze(std::move(code), state, steps);
     return it::wrap(res).map fun(x, (char)(x >= 10 ? 'A' + x - 10 : '0' + x)).to<string>();
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 {
     span args(argv, argc);
     string code = "1RB0LC_1RC1RB_1LA0LD_0LC0RB";
-    char state = 'A';
+    state_type state = 0;
     Int steps = 1000;
     if (argc > 1)
     {
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
         if (argc == 3 && strlen(args[2]) > 1)
             steps = stoull(args[2]);
         else
-            state = toupper(args[2][0]);
+            state = toupper(args[2][0]) - 'A';
     }
     if (argc > 3)
         steps = stoull(args[3]);

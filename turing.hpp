@@ -11,35 +11,38 @@
 // trim from start (in place)
 inline void ltrim(std::string &s)
 {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](char ch) { return !std::isspace(ch); }));
 }
 
 // trim from end (in place)
 inline void rtrim(std::string &s)
 {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](char ch) { return !std::isspace(ch); }).base(), s.end());
 }
 
 namespace turing
 {
+using symbol_type = uint8_t;
+using state_type = int;
+
 /// Turing state background color, according to bbchallenge.org (but a bit darker).
-inline std::string getBgStyle(char state)
+inline std::string getBgStyle(state_type state)
 {
     switch (state)
     {
-    case 'A':
+    case 0:
         return ansi::bg(128, 0, 0);
-    case 'B':
+    case 1:
         return ansi::bg(128, 96, 0) + ansi::str(ansi::black);
-    case 'C':
+    case 2:
         return ansi::bg(32, 64, 255);
-    case 'D':
+    case 3:
         return ansi::bg(0, 128, 0);
-    case 'E':
+    case 4:
         return ansi::bg(128, 0, 128);
-    case 'F':
+    case 5:
         return ansi::bg(0, 128, 128);
-    case 'Z':
+    case -1:
         return ansi::str(ansi::invert);
     default:
         return "";
@@ -47,7 +50,7 @@ inline std::string getBgStyle(char state)
 }
 
 /// Left or right.
-enum class direction : int8_t
+enum class direction : uint8_t
 {
     left,
     right
@@ -57,16 +60,15 @@ enum class direction : int8_t
 class Tape
 {
   public:
-    using symbol = uint8_t;
-    using container_type = std::vector<symbol>;
+    using container_type = std::vector<symbol_type>;
     static constexpr size_t defaultPrintWidth = 50;
     static constexpr char zeroChar = ' ';
 
-    symbol &operator*() { return _data[_head + _offset]; }
-    constexpr symbol operator*() const { return _data[_head + _offset]; }
+    symbol_type &operator*() { return _data[_head + _offset]; }
+    constexpr symbol_type operator*() const { return _data[_head + _offset]; }
 
     /// Gets the symbol at the given absolute position (zero being the initial position).
-    constexpr symbol operator[](ptrdiff_t i) const
+    constexpr symbol_type operator[](ptrdiff_t i) const
     {
         auto j = i + _offset;
         return j >= 0 && (size_t)j < _data.size() ? _data[j] : 0;
@@ -91,7 +93,7 @@ class Tape
                                                    std::ranges::subrange(_data.begin() + 1, _data.end()));
     }
 
-    constexpr void step(symbol x, direction d)
+    constexpr void step(symbol_type x, direction d)
     {
         **this = x;
         if (d == direction::left)
@@ -169,7 +171,7 @@ class Tape
                                    std::string_view headSuffix = "") const
     {
         std::string s;
-        auto curr = (uint8_t)-1;
+        auto curr = (symbol_type)-1;
         size_t c = 0;
         auto start = std::find_if(_data.begin(), _data.end(), [](auto x) { return x != 0; });
         if (start == _data.end())
@@ -185,7 +187,7 @@ class Tape
             {
                 if (c > 0)
                     s += toStringRLE(curr, c);
-                curr = (uint8_t)-1;
+                curr = (symbol_type)-1;
                 c = 0;
                 s += headPrefix;
                 s += (char)('0' + **this);
@@ -248,9 +250,9 @@ class Tape
         return "[" + std::to_string(c) + "]";
     }
 
-    static std::string toStringRLE(uint8_t x, size_t c)
+    static std::string toStringRLE(symbol_type x, size_t c)
     {
-        if (x == (uint8_t)-1)
+        if (x == (symbol_type)-1)
             return "";
         std::string s{1, (char)('0' + x)};
         return s + "^" + std::to_string(c) + " ";
@@ -260,9 +262,9 @@ class Tape
 /// A Turing machine transition.
 struct transition
 {
-    uint8_t symbol;
-    direction direction;
-    char nextState;
+    symbol_type symbol = 0;
+    direction direction = turing::direction::left;
+    state_type nextState = -1;
 };
 
 using turing_rule = vector2d<transition>;
@@ -278,13 +280,13 @@ inline std::string to_string(const turing_rule &rule)
         for (size_t j = 0; j < rule.columns(); ++j)
         {
             auto &&[symbol, dir, state] = rule[i, j];
-            if (state == '\0')
+            if (state == -1)
                 s += "---";
             else
             {
                 s += (char)('0' + symbol);
                 s += dir == turing::direction::left ? 'L' : 'R';
-                s += state;
+                s += (char)(state + 'A');
             }
         }
     }
@@ -307,7 +309,7 @@ class TuringMachine
 
     TuringMachine() = default;
 
-    constexpr TuringMachine(turing_rule rule, Tape tape = {}, char state = 'A', size_t steps = 0)
+    constexpr TuringMachine(turing_rule rule, Tape tape = {}, state_type state = 0, size_t steps = 0)
         : _rule(std::move(rule)), _tape(std::move(tape)), _state(state), _steps(steps)
     {
     }
@@ -324,8 +326,9 @@ class TuringMachine
                                  auto triple = x.substr(i, 3);
                                  if (triple == "---")
                                      triple = "1RZ";
-                                 return transition{uint8_t(triple[0] - '0'),
-                                                   triple[1] == 'R' ? direction::right : direction::left, triple[2]};
+                                 return transition{(symbol_type)(triple[0] - '0'),
+                                                   triple[1] == 'R' ? direction::right : direction::left,
+                                                   (state_type)(triple[2] - 'A')};
                              })
                              .to();
                      })
@@ -345,39 +348,18 @@ class TuringMachine
     constexpr void tape(Tape newTape) { _tape = std::move(newTape); }
     [[nodiscard]] constexpr size_t steps() const { return _steps; }
     void steps(size_t newSteps) { _steps = newSteps; }
-    [[nodiscard]] constexpr char state() const { return _state; }
-    void state(char newState) { _state = newState; }
+    [[nodiscard]] constexpr state_type state() const { return _state; }
+    void state(state_type newState) { _state = newState; }
 
     /// Returns whether the Turing machine is halted, i.e. in the Z state.
-    [[nodiscard]] constexpr bool halted() const { return _state < 'A' || (size_t)(_state - 'A') >= numStates(); }
+    [[nodiscard]] constexpr bool halted() const { return _state < 0 || (size_t)_state >= numStates(); }
     [[nodiscard]] constexpr bool blank() const { return _tape.blank(); }
 
     [[nodiscard]] constexpr int64_t head() const { return _tape.head(); }
     [[nodiscard]] constexpr int64_t offset() const { return _tape.offset(); }
 
-    [[nodiscard]] std::string str(bool terminal = false, size_t width = Tape::defaultPrintWidth) const
-    {
-        return _tape.str(width, terminal ? getBgStyle(_state) : _state + std::string(">"),
-                         terminal ? ansi::str(ansi::reset) : "");
-    }
-
-    /// Returns a string representation of this Turing machine, by encoding runs of 1s. For example, 1_11_111 is 123,
-    /// and 1__1 is 101.
-    [[nodiscard]] std::string str1(bool terminal = false, size_t width = Tape::defaultPrintWidth) const
-    {
-        return _tape.str1(width, terminal ? getBgStyle(_state) : _state + std::string(">"),
-                          terminal ? ansi::str(ansi::reset) : "");
-    }
-
-    /// Returns a string representation of this Turing machine, in run length encoding.
-    [[nodiscard]] std::string str2(bool terminal = false, size_t width = Tape::defaultPrintWidth) const
-    {
-        return _tape.str2(width, terminal ? getBgStyle(_state) : _state + std::string(">"),
-                          terminal ? ansi::str(ansi::reset) : "");
-    }
-
     /// Gets the transition that this machine will execute next.
-    [[nodiscard]] constexpr transition peek() const { return _rule[_state - 'A', *_tape]; }
+    [[nodiscard]] constexpr transition peek() const { return _rule[_state, *_tape]; }
 
     /// Steps, and returns true if the machine advanced, false otherwise (for example, it was already halted).
     step_info step()
@@ -395,23 +377,44 @@ class TuringMachine
     void reset()
     {
         _tape = {};
-        _state = 'A';
+        _state = 0;
         _steps = 0;
+    }
+
+    [[nodiscard]] std::string str(bool terminal = false, size_t width = Tape::defaultPrintWidth) const
+    {
+        return _tape.str(width, terminal ? getBgStyle(_state) : (char)(_state + 'A') + std::string(">"),
+                         terminal ? ansi::str(ansi::reset) : "");
+    }
+
+    /// Returns a string representation of this Turing machine, by encoding runs of 1s. For example, 1_11_111 is 123,
+    /// and 1__1 is 101.
+    [[nodiscard]] std::string str1(bool terminal = false, size_t width = Tape::defaultPrintWidth) const
+    {
+        return _tape.str1(width, terminal ? getBgStyle(_state) : (char)(_state + 'A') + std::string(">"),
+                          terminal ? ansi::str(ansi::reset) : "");
+    }
+
+    /// Returns a string representation of this Turing machine, in run length encoding.
+    [[nodiscard]] std::string str2(bool terminal = false, size_t width = Tape::defaultPrintWidth) const
+    {
+        return _tape.str2(width, terminal ? getBgStyle(_state) : (char)(_state + 'A') + std::string(">"),
+                          terminal ? ansi::str(ansi::reset) : "");
     }
 
   private:
     rule_type _rule;
     Tape _tape;
-    char _state = 'A';
+    state_type _state = 0;
     size_t _steps = 0;
 };
 
 struct tape_segment
 {
-    std::vector<uint8_t> data;
+    std::vector<symbol_type> data;
     /// Relative head position.
     int64_t head;
-    char state;
+    state_type state;
 
     template <typename CharT, typename Traits>
     friend std::basic_ostream<CharT, Traits> &operator<<(std::basic_ostream<CharT, Traits> &o,
@@ -454,9 +457,9 @@ constexpr bool operator==(const packed_transition &a, const packed_transition &b
 }
 
 /// Gets the tape segment, inclusive.
-inline tape_segment getTapeSegment(const Tape &tape, char state, int64_t start, int64_t stop)
+inline tape_segment getTapeSegment(const Tape &tape, state_type state, int64_t start, int64_t stop)
 {
-    std::vector<uint8_t> v;
+    std::vector<symbol_type> v;
     for (int64_t i = start; i <= stop; ++i)
         v.push_back(tape[i]);
     return {v, tape.head() - start, state};

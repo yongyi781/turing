@@ -13,7 +13,7 @@ inline void fail(std::string_view message)
     std::cout << ansi::brightRed << ansi::bold << "[FAIL] " << ansi::reset << message << '\n';
 }
 
-inline std::string to_string(const std::vector<uint8_t> &v)
+inline std::string to_string(const std::vector<turing::symbol_type> &v)
 {
     std::string s;
     for (auto x : v)
@@ -26,7 +26,12 @@ template <typename T, typename U> void assertEqual(const T &actual, const U &exp
     using Tp = std::common_type_t<T, U>;
     if (Tp(actual) != Tp(expected))
     {
-        fail("Expected " + to_string(expected) + ", got " + to_string(actual));
+        std::string message;
+        if constexpr (is_string<Tp>)
+            message = "Expected " + expected + ", got " + actual;
+        else
+            message = "Expected " + to_string(expected) + ", got " + to_string(actual);
+        fail(message);
         assert(false);
     }
 }

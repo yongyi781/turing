@@ -11,6 +11,9 @@ param (
 $ErrorActionPreference = 'Stop'
 
 $mode = $DebugPreference ? "debug" : "release"
+if (-not $File.EndsWith(".cpp")) {
+    $File += ".cpp"
+}
 $content = Get-Content -Path $File -Raw
 $usePch = $content -match "#include `"pch.hpp`"" -or $content -match "#include `"../pch.hpp`""
 if ($content -match "// stack size: (\d+)") {

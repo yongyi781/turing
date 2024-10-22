@@ -23,10 +23,9 @@ string formatDelta(size_t a, size_t b)
     return std::move(ss).str();
 }
 
-auto solve(string_view code, int growDir, char matchState, size_t maxSteps)
+auto solve(string_view code, int growDir, state_type matchState, size_t maxSteps)
 {
     TuringMachine m{string{code}};
-    size_t prevSize = m.tape().size();
     size_t million = 0;
     vector<size_t> lSteps{0};
     vector<size_t> rSteps{0};
@@ -35,10 +34,10 @@ auto solve(string_view code, int growDir, char matchState, size_t maxSteps)
     print(m);
     while (!m.halted() && m.steps() < maxSteps)
     {
-        m.step();
+        auto res = m.step();
         if (m.steps() == 1000000)
             million = m.tape().size();
-        if (m.tape().size() != prevSize && (matchState == '\0' || m.state() == matchState))
+        if (res.tapeExpanded && (matchState == -1 || m.state() == matchState))
         {
             // Tape grew
             if (growDir != 1 && m.head() < 0)
@@ -56,7 +55,6 @@ auto solve(string_view code, int growDir, char matchState, size_t maxSteps)
                 rSteps.push_back(m.steps());
             }
         }
-        prevSize = m.tape().size();
     }
     if (million > 0)
         cout << "Tape size at 1000000 steps: " << million << '\n';
@@ -82,7 +80,7 @@ int main(int argc, char *argv[])
     span args(argv, argc);
     string code = "1RB1LC_0LA1RD_1LA0LC_0RB0RD";
     int growDir = 0;
-    char matchState = '\0';
+    state_type matchState = -1;
     size_t maxSteps = 100'000'000;
     if (argc > 1)
     {
@@ -105,7 +103,7 @@ int main(int argc, char *argv[])
         if (argc == 4 && strlen(args[3]) > 1)
             maxSteps = stoull(args[3]);
         else
-            matchState = toupper(args[3][0]);
+            matchState = toupper(args[3][0]) - 'A';
     }
     if (argc > 4)
         maxSteps = stoull(args[4]);

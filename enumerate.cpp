@@ -1,219 +1,123 @@
 #include "pch.hpp"
-#include "turing.hpp"
+
+#include "detect_period.hpp"
 
 using namespace std;
+using namespace turing;
 
-inline turing::TuringMachine universal23() { return {"1RB2LA1LA_2LA2RB0RA"}; }
-inline turing::TuringMachine bb622() { return {"1RB0RF_1RC0LD_1LB1RC_---0LE_1RA1LE_---0RC"}; }
-
-// bool isLNF(const turing::TuringMachine::rule_type &rule){
-
-//     for (size_t i = 0; i < rule.rows(); ++i)
-//         for (size_t j = 0; j < rule.columns(); ++j){
-//             auto &&[symbol, dir, state] = rule[i, j];
-//             if (rule[i, j].dir == turing::direction::left)
-//                 return false;
-//             }
-//     return true;
-// }
-
-bool enumTuringRules(int numStates, int numSymbols, auto f)
+template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxSteps, Callback f)
 {
-    using R = turing::TuringMachine::rule_type;
-    using V = R::value_type;
-    auto trs = views::cartesian_product(range((uint8_t)0, (uint8_t)(numSymbols - 1)),
-                                        array{turing::direction::left, turing::direction::right},
-                                        range('A', (char)('A' + numStates - 1))) |
-               ranges::to<vector>();
-    R r(numStates, numSymbols);
-    r[0, 0] = {1, turing::direction::right, 'B'};
+    auto nextIsHalt = [](const TuringMachine &m) { return m.peek().nextState == '\0'; };
+    auto isFilled = [](const TuringMachine &m) { return ranges::all_of(m.rule(), fun(t, t.nextState != '\0')); };
+    auto isPrimitive = [](const TuringMachine &m) {
+        for (size_t i = 0; i < m.numStates(); ++i)
+        {
+            bool hasTransition = false;
+            for (size_t j = 0; j < m.numColors(); ++j)
+                if (m.rule()[i, j].nextState != '\0')
+                    hasTransition = true;
+            if (!hasTransition)
+                return false;
+        }
+        return true;
+    };
+    turing_rule r(nStates, nSymbols);
+    r[0, 0] = {1, direction::right, 'B'};
+    TuringMachine root{r};
+    root.step();
     return it::tree_preorder(
-        pair{1, 'C'},
-        [&](auto &&t, auto rec) {
-            auto &&[i, nextValid] = t;
-            for (uint8_t symbol = 0; symbol < (uint8_t)numSymbols; ++symbol)
-                for (turing::direction dir : {turing::direction::left, turing::direction::right})
-                    for (char state = 'A'; state <= min(nextValid, (char)('A' + numStates - 1)); ++state)
-                    {
-                        r[i / numSymbols, i % numSymbols] = {symbol, dir, state};
-                        rec({i + 1, max((char)(state + 1), nextValid)});
-                    }
+        tuple{root, (uint8_t)1, 'B'},
+        [&](auto &&t, auto f) {
+            auto &&[m, hSymbol, hState] = t;
+            // Invariant: m's next state should be a halt state.
+            if (nextIsHalt(m))
+            {
+                for (uint8_t symbol = 0; symbol <= min(nSymbols - 1, hSymbol + 1); ++symbol)
+                    for (auto dir : {direction::left, direction::right})
+                        for (char state = 'A'; state <= min('A' + nStates - 1, hState + 1); ++state)
+                        {
+                            auto r = m.rule();
+                            r[m.state() - 'A', *m.tape()] = {symbol, dir, state};
+                            TuringMachine m2{std::move(r), m.tape(), m.state(), m.steps()};
+                            if (!isFilled(m2))
+                                while (m2.steps() < maxSteps && !nextIsHalt(m2))
+                                    m2.step();
+                            if (!it::callbackResult(f, tuple{m2, max(hSymbol, symbol), max(hState, state)}))
+                                return it::result_break;
+                        }
+            }
             return it::result_continue;
         },
-        fun(t, t.first < numSymbols * numStates))([&](auto &&t) {
-        auto &&[i, nextValid] = t;
-        if (i == numSymbols * numStates && !it::callbackResult(f, r))
-            return it::result_break;
+        [&](auto &&t) {
+            auto &&[m, hSymbol, hState] = t;
+            return m.steps() < maxSteps && !isFilled(m);
+        })([&](auto &&t) {
+        auto &&[m, hSymbol, hState] = t;
+        if (isFilled(m) || (m.steps() == maxSteps && isPrimitive(m)))
+            if (!it::callbackResult(f, m))
+                return it::result_break;
         return it::result_continue;
     });
 }
 
-constexpr size_t maxStates = 4;
-
-bool allStatesReachable(const turing::TuringMachine::rule_type &rule)
+auto solve(int nStates, int nSymbols, size_t maxSteps)
 {
-    int nStates = rule.rows();
-    int nSymbols = rule.columns();
-    array<bool, maxStates> visited{};
-    vector<char> s{'A'};
-    while (!s.empty())
-    {
-        auto state = s.back();
-        s.pop_back();
-        for (int symbol = 0; symbol < nSymbols; ++symbol)
-        {
-            auto &&[_, dir, next] = rule[state - 'A', symbol];
-            if (next >= 'A' && next < 'A' + nStates && next != state && !visited[next - 'A'])
-            {
-                visited[next - 'A'] = true;
-                s.push_back(next);
-            }
-        }
-    }
-    return all_of(visited.begin(), visited.begin() + nStates, identity{});
-}
-
-auto solve()
-{
-    // string code;
-    // code = "1RB1LF_1LB1LC_1RD0LE_---0RB_0RC0LA_1RC0RF";
-    // cout << "Enter code: ";
-    // cin >> code;
-    // cout << "Turing machine = " << code << '\n';
-    // auto res = analyze(turing::known::boydJohnson(), 'A', 1000, 40);
-    // auto res = findTranslatedCyclerPeriod({"1RB1LA_0LA0RA_1LA0RA"}, 1000, 50000);
-    // return res;
-    // return it::wrap(res).map fun(x, (char)('0' + x)).to<string>();
-    // run({code}, 0, 'A');
-
-    map<int, int> hist;
-    int64_t total = 0;
-    ofstream fout("data/analyze_out2.txt");
-    fout << fixed << setprecision(3);
-    constexpr int nSteps = 1'000'000;
-    // constexpr int tapeSizeBound = isqrt(nSteps);
-    enumTuringRules(3, 2, [&](auto &&r) {
-        if (!allStatesReachable(r))
-            return;
+    size_t totalCyclers = 0;
+    size_t totalTCyclers = 0;
+    size_t totalOther = 0;
+    size_t total = 0;
+    string directory = "data/";
+    directory += to_string(nStates) + "x" + to_string(nSymbols) + "/";
+    ofstream foutc(directory + "cyclers.txt");
+    ofstream fouto(directory + "others.txt");
+    enumTMs(nStates, nSymbols, maxSteps, [&](auto &&m) {
         ++total;
-        auto p = turing::findTranslatedCyclerPeriod(r, 1000, 1000);
-        ++hist[p];
-        // if (p == 0 || p >= 100)
-        // cout << setw(4) << p << " | " << formatRule(r) << '\n';
-        if (p == 2)
+        auto res = CyclerDetector{}.findPeriodAndPreperiod(m.rule(), 120, 240);
+        if (res.period > 0)
         {
-            turing::TuringMachine m{r};
-            size_t tapeSize2 = 0;
-            for (int i = 1; i <= nSteps; ++i)
-            {
-                m.step();
-                if (i == 100'000)
-                    tapeSize2 = m.tape().size();
-                // if (m.tape().size() >= tapeSizeBound)
-                //     break;
-            }
-
-            // if ((int)m.tape().size() < tapeSizeBound)
-            double ratio = (double)m.tape().size() / (double)tapeSize2;
-            fout << setw(8) << ratio << " | " << setw(5) << m.tape().size() << " | " << setw(5) << tapeSize2 << " | "
-                 << formatRule(r) << '\n'
-                 << flush;
+            ++totalCyclers;
+            if (res.preperiod >= 100 || res.period >= 100)
+                foutc << " cycler\t" << setw(8) << total << "\t" << m.rule_str() << "\t" << res.period << "\t"
+                      << res.preperiod << '\n';
+            return;
         }
+        res = TranslatedCyclerDetector{}.findPeriodAndPreperiod(m.rule(), 10000, 20000);
+        if (res.period > 0)
+        {
+            ++totalTCyclers;
+            if (res.period >= 1000 || res.preperiod >= 1000)
+                cout << "tcycler\t" << setw(8) << total << "\t" << m.rule_str() << "\t" << res.period << "\t"
+                     << res.preperiod << "\t" << res.offset << '\n';
+            return;
+        }
+        TuringMachine m2{m.rule()};
+        size_t i = 0;
+        for (; i < 100'000; ++i)
+            m2.step();
+        auto size1 = m2.tape().size();
+        for (; i < 1'000'000; ++i)
+            m2.step();
+        auto size2 = m2.tape().size();
+        fouto << setw(8) << total << "\t" << m.rule_str() << "\t" << size1 << "\t" << size2 << '\n';
+        ++totalOther;
     });
-
-    // for (auto &&rule : interesting)
-    // {
-    //     turing::TuringMachine m(rule);
-    //     for (int i = 0; i < 1000000; ++i)
-    //         m.step();
-
-    //     cout << setw(5) << m.tape().data().size() << " | " << formatRule(rule) << '\n';
-    // }
-
-    for (auto &&[p, c] : hist)
-        cout << "# with period " << p << ": " << c << '\n';
-    return total;
+    return tuple{totalCyclers, totalTCyclers, totalOther, total};
 }
 
-inline bool isPeriodic(turing::TuringMachine machine, size_t period = 100)
+int main(int argc, char *argv[])
 {
-    auto startTape = machine.tape();
-    auto startState = machine.state();
-    int64_t startHead = startTape.head();
-    int64_t ld = 0;
-    int64_t hd = 0;
-    for (size_t p = 1; p <= period; ++p)
-    {
-        machine.step();
-        if (machine.halted())
-            return false;
-        ld = std::min(ld, machine.tape().head() - startHead);
-        hd = std::max(hd, machine.tape().head() - startHead);
-    }
-    if (machine.state() == startState)
-    {
-        auto l = ld;
-        auto h = hd;
-        if (machine.tape().head() < startHead)
-            l = std::min(-startTape.offset() - startHead, -machine.tape().offset() - machine.tape().head());
-        else if (machine.tape().head() > startHead)
-            h = std::max(startTape.data().size() - startHead - startTape.offset(),
-                         machine.tape().data().size() - machine.tape().head() - machine.tape().offset());
-        if (spansEqual(startTape, machine.tape(), l, h))
-            return true;
-    }
-    return false;
-}
-
-// Find period and preperiod
-auto solve2()
-{
-    while (true)
-    {
-        string s;
-        cout << "Enter code: ";
-        getline(cin, s);
-        if (ranges::count(s, '_') < 2)
-        {
-            cout << "I'm sorry, I didn't catch that. Type it again?\n";
-            continue;
-        }
-        turing::TuringMachine m{s};
-        int64_t maxPreperiod = 400'000'000LL;
-        auto period = turing::findTranslatedCyclerPeriod(m, maxPreperiod, 8'000'000LL);
-        if (period == 0)
-        {
-            cout << "Period not found.\n";
-            continue;
-        }
-        cout << "Found " << pair{maxPreperiod, period} << '\n';
-        // Binary search
-        int64_t low = 1;
-        int64_t high = maxPreperiod;
-        while (high - low > 1)
-        {
-            auto mid = low + (high - low) / 2;
-            auto copy = m;
-            for (int i = 0; i < mid; ++i)
-                copy.step();
-            if (isPeriodic(std::move(copy), period))
-            {
-                cout << "Preperiod " << mid << " ✅\n";
-                high = mid;
-            }
-            else
-            {
-                cout << "Preperiod " << mid << " ❌\n";
-                low = mid;
-            }
-        }
-        cout << period << "\t" << high << '\n';
-    }
-}
-
-int main()
-{
+    span args(argv, argc);
+    int nStates = 4;
+    int nSymbols = 2;
+    size_t maxSteps = 107;
+    if (argc > 1)
+        nStates = stoi(args[1]);
+    if (argc > 2)
+        nSymbols = stoi(args[2]);
+    if (argc > 3)
+        maxSteps = stoull(args[3]);
+    nStates = std::min(nStates, 5);
+    nSymbols = std::min(nSymbols, 4);
     // ios::sync_with_stdio(false);
-    printTiming(solve);
-    // printTiming(solve2);
+    printTiming(solve, nStates, nSymbols, maxSteps);
 }

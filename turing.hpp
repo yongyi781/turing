@@ -53,12 +53,6 @@ enum class direction : int8_t
     right
 };
 
-template <typename CharT, typename Traits>
-inline std::basic_ostream<CharT, Traits> &operator<<(std::basic_ostream<CharT, Traits> &o, direction d)
-{
-    return o << (d == direction::right ? 'R' : 'L');
-}
-
 /// A Turing tape with up to 256 symbols, along with a head.
 class Tape
 {
@@ -263,7 +257,7 @@ class Tape
     }
 };
 
-/// A Turing machine transition rule
+/// A Turing machine transition.
 struct transition
 {
     uint8_t symbol;
@@ -271,11 +265,37 @@ struct transition
     char nextState;
 };
 
+using turing_rule = vector2d<transition>;
+
+/// Returns a string representation of the given Turing machine rule.
+inline std::string to_string(const turing_rule &rule)
+{
+    std::string s;
+    for (size_t i = 0; i < rule.rows(); ++i)
+    {
+        if (i != 0)
+            s += "_";
+        for (size_t j = 0; j < rule.columns(); ++j)
+        {
+            auto &&[symbol, dir, state] = rule[i, j];
+            if (state == '\0')
+                s += "---";
+            else
+            {
+                s += (char)('0' + symbol);
+                s += dir == turing::direction::left ? 'L' : 'R';
+                s += state;
+            }
+        }
+    }
+    return s;
+}
+
 /// A Turing machine.
 class TuringMachine
 {
   public:
-    using rule_type = vector2d<transition>;
+    using rule_type = turing_rule;
 
     struct step_info
     {
@@ -285,7 +305,12 @@ class TuringMachine
         bool tapeExpanded;
     };
 
-    constexpr TuringMachine(rule_type rule) : _rule(std::move(rule)) {}
+    TuringMachine() = default;
+
+    constexpr TuringMachine(turing_rule rule, Tape tape = {}, char state = 'A', size_t steps = 0)
+        : _rule(std::move(rule)), _tape(std::move(tape)), _state(state), _steps(steps)
+    {
+    }
 
     /// Initializes a Turing machine from a code in TNF format.
     TuringMachine(std::string code)
@@ -315,6 +340,7 @@ class TuringMachine
     [[nodiscard]] constexpr size_t numColors() const { return _rule.columns(); }
 
     [[nodiscard]] constexpr const rule_type &rule() const { return _rule; }
+    [[nodiscard]] constexpr std::string rule_str() const { return to_string(_rule); }
     [[nodiscard]] constexpr const Tape &tape() const { return _tape; }
     constexpr void tape(Tape newTape) { _tape = std::move(newTape); }
     [[nodiscard]] constexpr size_t steps() const { return _steps; }
@@ -350,12 +376,15 @@ class TuringMachine
                           terminal ? ansi::str(ansi::reset) : "");
     }
 
+    /// Gets the transition that this machine will execute next.
+    [[nodiscard]] constexpr transition peek() const { return _rule[_state - 'A', *_tape]; }
+
     /// Steps, and returns true if the machine advanced, false otherwise (for example, it was already halted).
     step_info step()
     {
         if (halted())
             return {false, false};
-        auto &&[b, dir, s] = _rule[_state - 'A', *_tape];
+        auto &&[b, dir, s] = peek();
         auto sz = _tape.size();
         _tape.step(b, dir);
         _state = s;
@@ -383,6 +412,22 @@ struct tape_segment
     /// Relative head position.
     int64_t head;
     char state;
+
+    template <typename CharT, typename Traits>
+    friend std::basic_ostream<CharT, Traits> &operator<<(std::basic_ostream<CharT, Traits> &o,
+                                                         const turing::tape_segment &ts)
+    {
+        if (ts.head == -1)
+            o << turing::getBgStyle(ts.state) << ' ' << ansi::reset;
+        for (size_t i = 0; i < ts.data.size(); ++i)
+            if (ts.head == (int)i)
+                o << turing::getBgStyle(ts.state) << (char)('0' + ts.data[i]) << ansi::reset;
+            else
+                o << (char)('0' + ts.data[i]);
+        if (ts.head == (int)ts.data.size())
+            o << turing::getBgStyle(ts.state) << ' ' << ansi::reset;
+        return o;
+    }
 };
 
 constexpr bool operator==(const tape_segment &a, const tape_segment &b)
@@ -390,35 +435,22 @@ constexpr bool operator==(const tape_segment &a, const tape_segment &b)
     return a.data == b.data && a.head == b.head && a.state == b.state;
 }
 
-inline std::ostream &operator<<(std::ostream &o, const tape_segment &ts)
-{
-    if (ts.head == -1)
-        o << turing::getBgStyle(ts.state) << ' ' << ansi::reset;
-    for (size_t i = 0; i < ts.data.size(); ++i)
-        if (ts.head == (int)i)
-            o << turing::getBgStyle(ts.state) << (char)('0' + ts.data[i]) << ansi::reset;
-        else
-            o << (char)('0' + ts.data[i]);
-    if (ts.head == (int)ts.data.size())
-        o << turing::getBgStyle(ts.state) << ' ' << ansi::reset;
-    return o;
-}
-
 struct packed_transition
 {
     tape_segment from;
     tape_segment to;
+
+    template <typename CharT, typename Traits>
+    friend std::basic_ostream<CharT, Traits> &operator<<(std::basic_ostream<CharT, Traits> &o,
+                                                         const turing::packed_transition &ts)
+    {
+        return o << ts.from << " → " << ts.to;
+    }
 };
 
 constexpr bool operator==(const packed_transition &a, const packed_transition &b)
 {
     return a.from == b.from && a.to == b.to;
-}
-
-inline std::ostream &operator<<(std::ostream &o, const packed_transition &ts)
-{
-    o << ts.from << " → " << ts.to;
-    return o;
 }
 
 /// Gets the tape segment, inclusive.
@@ -428,30 +460,6 @@ inline tape_segment getTapeSegment(const Tape &tape, char state, int64_t start, 
     for (int64_t i = start; i <= stop; ++i)
         v.push_back(tape[i]);
     return {v, tape.head() - start, state};
-}
-
-/// Returns a string representation of the given Turing machine rule.
-inline std::string formatRule(const turing::TuringMachine::rule_type &rule)
-{
-    std::string s;
-    for (size_t i = 0; i < rule.rows(); ++i)
-    {
-        if (i != 0)
-            s += "_";
-        for (size_t j = 0; j < rule.columns(); ++j)
-        {
-            auto &&[symbol, dir, state] = rule[i, j];
-            if (state == '\0')
-                s += "---";
-            else
-            {
-                s += (char)('0' + symbol);
-                s += dir == turing::direction::left ? 'L' : 'R';
-                s += state;
-            }
-        }
-    }
-    return s;
 }
 
 /// Returns whether the given spans of t1 and t2, relative to their head positions, are identical.
@@ -550,3 +558,9 @@ inline TuringMachine antihydra() { return {"1RB1RA_0LC1LE_1LD1LC_1LA0LB_1LF1RE_-
 inline TuringMachine id4446642() { return {"1RB0RC_0LC---_1RD1RC_0LE1RA_1RD1LE"}; }
 } // namespace known
 } // namespace turing
+
+template <typename CharT, typename Traits>
+inline std::basic_ostream<CharT, Traits> &operator<<(std::basic_ostream<CharT, Traits> &o, turing::direction d)
+{
+    return o << (d == turing::direction::right ? 'R' : 'L');
+}

@@ -1,3 +1,6 @@
+// The point of this program is to compile C# code corresponding to a Turing machine, and then to decompile it with
+// ILSpy. You will need to edit the ILSpy path.
+
 #include "pch.hpp"
 
 using namespace std;
@@ -99,8 +102,6 @@ auto compile(string_view code, bool decompile, bool quiet)
     }
 }
 
-// The point of this program is to compile C# code corresponding to a Turing machine, and then to decompile it with
-// ILSpy.
 int main(int argc, char *argv[])
 {
     auto args = span(argv, argc);

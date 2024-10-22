@@ -1,35 +1,10 @@
 #include "../pch.hpp"
-#include "../turing.hpp"
+
+#include "tests_common.hpp"
 
 using namespace std;
 using namespace turing;
 using Int = int64_t;
-
-void pass(string_view message)
-{
-    cout << ansi::brightGreen << ansi::bold << "[PASS] " << ansi::reset << message << '\n';
-}
-void fail(string_view message) { cout << ansi::brightRed << ansi::bold << "[FAIL] " << ansi::reset << message << '\n'; }
-
-string to_string(const vector<uint8_t> &v)
-{
-    string s;
-    for (auto x : v)
-        s += (char)('0' + x);
-    return s;
-}
-
-template <typename T, typename U> void assertEqual(const T &actual, const U &expected)
-{
-    using Tp = common_type_t<T, U>;
-    if (Tp(actual) != Tp(expected))
-    {
-        fail("Expected " + to_string(expected) + ", got " + to_string(actual));
-        assert(false);
-    }
-}
-
-size_t countOnes(const Tape &t) { return ranges::count(t.data(), 1); }
 
 void testBB5()
 {
@@ -83,4 +58,5 @@ int main()
     testBB5();
     testSimulation();
     testTapeSegment();
+    pass("=== All basic tests passed ===");
 }

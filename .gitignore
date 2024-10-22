@@ -8,3 +8,4 @@ release/
 compile_flags.txt
 test*.cpp
 bananabeaver.cpp
+detect_period2.cpp

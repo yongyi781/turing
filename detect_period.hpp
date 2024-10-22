@@ -31,6 +31,38 @@ inline bool isPeriodic(TuringMachine m, size_t period)
     return checkForPeriod(start, m, lh, hh);
 }
 
+/// Finds the preperiod. Requires exact period to be known.
+[[nodiscard]] inline size_t findPreperiod(TuringMachine m, size_t period, size_t low, size_t high, bool verbose = false)
+{
+    assert(low <= high);
+    if (low < 0)
+        low = 0;
+    // Binary search
+    for (size_t i = m.steps(); i < low; ++i)
+        m.step();
+    while (high - low > 1)
+    {
+        auto mid = low + (high - low) / 2;
+        auto copy = m;
+        for (size_t i = low; i < mid; ++i)
+            copy.step();
+        if (isPeriodic(copy, period))
+        {
+            if (verbose)
+                std::cout << "Preperiod " << mid << " ✅\n";
+            high = mid;
+        }
+        else
+        {
+            if (verbose)
+                std::cout << "Preperiod " << mid << " ❌\n";
+            low = mid;
+            m = copy;
+        }
+    }
+    return high;
+}
+
 struct find_period_result
 {
     size_t period = 0;
@@ -44,6 +76,8 @@ class CyclerDetector
 {
   public:
     constexpr CyclerDetector(bool verbose = false) : _verbose(verbose) {}
+
+    [[nodiscard]] constexpr bool verbose() const { return _verbose; }
 
     [[nodiscard]]
     find_period_result findPeriod(TuringMachine m, size_t periodBound, size_t maxSteps) const
@@ -69,56 +103,26 @@ class CyclerDetector
         return {};
     }
 
-    /// Finds the preperiod. Requires exact period to be known.
-    [[nodiscard]] size_t findPreperiod(TuringMachine m, size_t period, size_t low, size_t high) const
-    {
-        assert(low <= high);
-        if (low < 0)
-            low = 0;
-        // Binary search
-        for (size_t i = m.steps(); i < low; ++i)
-            m.step();
-        while (high - low > 1)
-        {
-            auto mid = low + (high - low) / 2;
-            auto copy = m;
-            for (size_t i = low; i < mid; ++i)
-                copy.step();
-            if (isPeriodic(copy, period))
-            {
-                if (_verbose)
-                    std::cout << "Preperiod " << mid << " ✅\n";
-                high = mid;
-            }
-            else
-            {
-                if (_verbose)
-                    std::cout << "Preperiod " << mid << " ❌\n";
-                low = mid;
-                m = copy;
-            }
-        }
-        return high;
-    }
-
     /// The main period detection function. Returns (period, preperiod, offset).
-    [[nodiscard]] find_period_result findPeriodAndPreperiod(TuringMachine machine, int64_t periodBound,
-                                                            size_t maxSteps = std::numeric_limits<size_t>::max()) const
+    template <typename Self>
+    [[nodiscard]] find_period_result findPeriodAndPreperiod(this const Self &self, TuringMachine machine,
+                                                            int64_t periodBound,
+                                                            size_t maxSteps = std::numeric_limits<size_t>::max())
     {
         auto rule = machine.rule();
-        auto res = findPeriod(machine, periodBound, maxSteps);
+        auto res = self.findPeriod(machine, periodBound, maxSteps);
         if (res.period == 0)
         {
             // No period found.
             return {0UZ, 0UZ, 0LL, std::move(machine)};
         }
-        if (_verbose)
+        if (self._verbose)
             std::cout << "Preliminary: " << std::tuple{res.period, res.preperiod, res.offset} << '\n';
         auto &m = res.lastMachine;
-        if (_verbose)
+        if (self._verbose)
             std::cout << "Performing binary search with low = " << m.steps() << " and high = " << res.preperiod << '\n';
-        auto preperiod = findPreperiod(m, res.period, m.steps(), res.preperiod);
-        if (_verbose && (preperiod == 1 || preperiod == 2))
+        auto preperiod = findPreperiod(m, res.period, m.steps(), res.preperiod, self._verbose);
+        if (self._verbose && (preperiod == 1 || preperiod == 2))
             std::cout << "Note: preperiod may be 0\n";
         return {res.period, preperiod, res.offset, std::move(machine)};
     }
@@ -128,10 +132,10 @@ class CyclerDetector
 };
 
 /// Detects translated cyclers. This will not catch cyclers.
-class TranslatedCyclerDetector
+class TranslatedCyclerDetector : public CyclerDetector
 {
   public:
-    constexpr TranslatedCyclerDetector(bool verbose = false) : _verbose(verbose) {}
+    constexpr TranslatedCyclerDetector(bool verbose = false) : CyclerDetector(verbose) {}
 
     /// Finds a period for the given Turing machine rule code with the given period bound. The returned preperiod is
     /// only an upper bound.
@@ -153,7 +157,7 @@ class TranslatedCyclerDetector
                 {
                     prev = m;
                     expandDir = m.head() < 0 ? -1 : 1;
-                    if (_verbose)
+                    if (verbose())
                         std::cout << m.steps() << " | " << m.str(true) << '\n';
                     break;
                 }
@@ -181,7 +185,7 @@ class TranslatedCyclerDetector
                     auto h = m.head() < 0 ? hh - prev.head() : 0;
                     if (spansEqual(prev.tape(), m.tape(), l, h))
                     {
-                        if (_verbose)
+                        if (verbose())
                             std::cout << ansi::green << ansi::bold << "[found] " << ansi::reset << m.steps() << " | "
                                       << m.str(true) << '\n';
                         return {p, m.steps() - p, m.head() - prev.head(), std::move(prev2)};
@@ -192,62 +196,5 @@ class TranslatedCyclerDetector
         }
         return {};
     }
-
-    /// Finds the preperiod. Requires exact period to be known.
-    [[nodiscard]] size_t findPreperiod(TuringMachine m, size_t period, size_t low, size_t high) const
-    {
-        assert(low <= high);
-        if (low < 0)
-            low = 0;
-        // Binary search
-        for (size_t i = m.steps(); i < low; ++i)
-            m.step();
-        while (high - low > 1)
-        {
-            auto mid = low + (high - low) / 2;
-            auto copy = m;
-            for (size_t i = low; i < mid; ++i)
-                copy.step();
-            if (isPeriodic(copy, period))
-            {
-                if (_verbose)
-                    std::cout << "Preperiod " << mid << " ✅\n";
-                high = mid;
-            }
-            else
-            {
-                if (_verbose)
-                    std::cout << "Preperiod " << mid << " ❌\n";
-                low = mid;
-                m = copy;
-            }
-        }
-        return high;
-    }
-
-    /// The main period detection function. Returns (period, preperiod, offset).
-    [[nodiscard]] find_period_result findPeriodAndPreperiod(TuringMachine machine, int64_t periodBound,
-                                                            size_t maxSteps = std::numeric_limits<size_t>::max()) const
-    {
-        auto rule = machine.rule();
-        auto res = findPeriod(machine, periodBound, maxSteps);
-        if (res.period == 0)
-        {
-            // No period found.
-            return {0UZ, 0UZ, 0LL, std::move(machine)};
-        }
-        if (_verbose)
-            std::cout << "Preliminary: " << std::tuple{res.period, res.preperiod, res.offset} << '\n';
-        auto &m = res.lastMachine;
-        if (_verbose)
-            std::cout << "Performing binary search with low = " << m.steps() << " and high = " << res.preperiod << '\n';
-        auto preperiod = findPreperiod(m, res.period, m.steps(), res.preperiod);
-        if (_verbose && (preperiod == 1 || preperiod == 2))
-            std::cout << "Note: preperiod may be 0\n";
-        return {res.period, preperiod, res.offset, std::move(machine)};
-    }
-
-  private:
-    bool _verbose = false;
 };
 } // namespace turing

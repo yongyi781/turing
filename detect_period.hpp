@@ -99,6 +99,7 @@ class CyclerDetector
                 if (machine.head() == prev.head() && checkForPeriod(prev, machine, lh, hh))
                     return {i, machine.steps() - i, machine.head() - prev.head(), std::move(prev2)};
             }
+            periodBound = std::max(periodBound + 1, (size_t)(periodBound * 1.1));
             prev2 = prev;
         }
         return {};
@@ -107,11 +108,11 @@ class CyclerDetector
     /// The main period detection function. Returns (period, preperiod, offset).
     template <typename Self>
     [[nodiscard]] find_period_result findPeriodAndPreperiod(this const Self &self, TuringMachine machine,
-                                                            int64_t periodBound,
+                                                            int64_t startPeriodBound,
                                                             size_t maxSteps = std::numeric_limits<size_t>::max())
     {
         auto rule = machine.rule();
-        auto res = self.findPeriod(machine, periodBound, maxSteps);
+        auto res = self.findPeriod(machine, startPeriodBound, maxSteps);
         if (res.period == 0)
         {
             // No period found.
@@ -194,6 +195,7 @@ class TranslatedCyclerDetector : public CyclerDetector
                     }
                 }
             }
+            periodBound = std::max(periodBound + 1, (size_t)(periodBound * 1.1));
             prev2 = prev;
         }
         return {};

@@ -6,9 +6,11 @@
 using namespace std;
 using namespace turing;
 
+constexpr int diffLowerBound = 2;
+
 void print(const TuringMachine &m)
 {
-    cout << setw(10) << m.steps();
+    cout << setw(10) << m.steps() << " | " << m.tape().size() << " | " << (double)m.steps() / m.tape().size();
     cout << " | " << m.str(true, 10) << '\n';
 }
 
@@ -40,16 +42,16 @@ auto solve(string_view code, int growDir, state_type matchState, size_t maxSteps
         if (res.tapeExpanded && (matchState == -1 || m.state() == matchState))
         {
             // Tape grew
-            if (growDir != 1 && m.head() < 0)
+            if (growDir != 1 && m.head() < 0 && m.steps() - lSteps.back() >= diffLowerBound)
             {
                 cout << "L | ";
                 cout << setw(13) << formatDelta(lSteps.back(), m.steps()) << " | ";
                 print(m);
                 lSteps.push_back(m.steps());
             }
-            if (growDir != -1 && m.head() > 0)
+            if (growDir != -1 && m.head() > 0 && m.steps() - rSteps.back() >= diffLowerBound)
             {
-                cout << string(60, ' ') << "R | ";
+                cout << string(50, ' ') << "R | ";
                 cout << setw(13) << formatDelta(rSteps.back(), m.steps()) << " | ";
                 print(m);
                 rSteps.push_back(m.steps());

@@ -10,7 +10,7 @@ void testParseFormat()
 {
     string code = "1RB0LA_0RB1LA";
     TuringMachine m{code};
-    assertEqual(m.rule_str(), code);
+    assertEqual(m.ruleStr(), code);
     pass("testParseFormat");
 }
 

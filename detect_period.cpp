@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 {
     span args(argv, argc);
     string code = "1RB0LC_1RD1LC_0LA1LB_1LC0RD";
-    Int periodBound = 250'000'000;
+    Int periodBound = 1000;
     if (argc > 1)
     {
         code = args[1];

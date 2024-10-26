@@ -26,11 +26,11 @@ template <typename T, typename U> void assertEqual(const T &actual, const U &exp
     using Tp = std::common_type_t<T, U>;
     if (Tp(actual) != Tp(expected))
     {
-        std::string message;
+        std::string message = "Expected ";
         if constexpr (is_string<Tp>)
-            message = "Expected " + expected + ", got " + actual;
+            message += expected + std::string{", got "} + actual;
         else
-            message = "Expected " + to_string(expected) + ", got " + to_string(actual);
+            message += to_string(expected) + ", got " + to_string(actual);
         fail(message);
         assert(false);
     }

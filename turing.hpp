@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <deque>
+#include <euler/algorithm.hpp>
 #include <string>
 #include <vector>
 
@@ -23,7 +24,7 @@ inline void rtrim(std::string &s)
 namespace turing
 {
 using symbol_type = uint8_t;
-using state_type = int;
+using state_type = int8_t;
 
 /// Turing state background color, according to bbchallenge.org (but a bit darker).
 inline std::string getBgStyle(state_type state)
@@ -280,7 +281,7 @@ inline std::string to_string(const turing_rule &rule)
         for (size_t j = 0; j < rule.columns(); ++j)
         {
             auto &&[symbol, dir, state] = rule[i, j];
-            if (state == -1)
+            if (state == (state_type)-1)
                 s += "---";
             else
             {
@@ -291,6 +292,42 @@ inline std::string to_string(const turing_rule &rule)
         }
     }
     return s;
+}
+
+/// Doesn't work yet, but good enough for 4x2. Precondition: all defined states are reachable.
+inline turing_rule lexicalNormalForm(const turing_rule &rule)
+{
+    if (rule.rows() <= 3) // nothing to do.
+        return rule;
+    // Don't worry about symbols yet
+    auto statePerm = range((state_type)0, (state_type)(rule.rows() - 1));
+    auto highestUsedState = rule[0, 0].nextState;
+    for (state_type i = 0; i < (state_type)rule.rows(); ++i)
+    {
+        for (symbol_type j = 0; j < (symbol_type)rule.columns(); ++j)
+        {
+            if (i == 0 && j == 0)
+                continue;
+            auto k = rule[i, j].nextState;
+            if (k < 0 || k >= (int)rule.rows())
+                continue;
+            if (k > highestUsedState + 1)
+                std::swap(statePerm[k], statePerm[highestUsedState + 1]);
+            highestUsedState = std::max(highestUsedState, k);
+        }
+    }
+    turing_rule res(rule.rows(), rule.columns());
+    for (state_type i = 0; i < (state_type)rule.rows(); ++i)
+    {
+        for (symbol_type j = 0; j < (symbol_type)rule.columns(); ++j)
+        {
+            auto &&[symbol, dir, state] = rule[i, j];
+            if (state < 0 || state >= (int)rule.rows())
+                continue;
+            res[statePerm[i], j] = {symbol, dir, statePerm[state]};
+        }
+    }
+    return res;
 }
 
 /// A Turing machine.
@@ -343,7 +380,7 @@ class TuringMachine
     [[nodiscard]] constexpr size_t numColors() const { return _rule.columns(); }
 
     [[nodiscard]] constexpr const rule_type &rule() const { return _rule; }
-    [[nodiscard]] constexpr std::string rule_str() const { return to_string(_rule); }
+    [[nodiscard]] constexpr std::string ruleStr() const { return to_string(_rule); }
     [[nodiscard]] constexpr const Tape &tape() const { return _tape; }
     constexpr void tape(Tape newTape) { _tape = std::move(newTape); }
     [[nodiscard]] constexpr size_t steps() const { return _steps; }

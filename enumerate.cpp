@@ -43,7 +43,7 @@ constexpr pair<size_t, size_t> getTranslatedCyclerBounds(int nStates, int nSymbo
         if (nStates == 3)
             return pair{92, 184};
         if (nStates == 4)
-            return pair{17620, 158491};
+            return pair{1200, 2400};
     }
     return pair{10000, 30000};
 }
@@ -120,6 +120,8 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
     });
 }
 
+string lnfRuleStr(const TuringMachine &m) { return to_string(lexicalNormalForm(m.rule())); }
+
 auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
 {
     auto &&[pc, msc] = getCyclerBounds(nStates, nSymbols);
@@ -129,24 +131,26 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
     size_t totalBouncers = 0;
     size_t totalOther = 0;
     size_t total = 0;
-    string directory = "data/";
+    string directory = "out/";
     directory += to_string(nStates) + "x" + to_string(nSymbols) + "/";
     // ofstream foutc(directory + "cyclers.txt");
     // ofstream foutt(directory + "tcyclers.txt");
-    ofstream foutb(directory + "bouncers.txt");
-    ofstream fouto(directory + "others.txt");
-    fouto << fixed << setprecision(6);
+    // ofstream foutb(directory + "bouncers.txt");
+    ofstream foutu(directory + "unclassified.txt");
+    foutu << fixed << setprecision(6);
     enumTMs(nStates, nSymbols, maxSteps, [&](auto m) {
         ++total;
         if (total % 10'000 == 0)
             cout << "So far: " << total << " total | " << totalCyclers << " cyclers | " << totalTCyclers
                  << " tcyclers | " << totalBouncers << " bouncers | " << totalOther << " other\n";
+        // Get the short translated cyclers out of the way first.
         auto res2 = TranslatedCyclerDetector{}.findPeriod(m, 120, 240);
         if (res2.period > 0)
         {
             ++totalTCyclers;
             // if (res2.period >= 1000 || res2.preperiod >= 1000)
-            // foutt << setw(8) << total << '\t' << m.rule_str() << '\t' << res2.period << '\t' << res2.preperiod <<
+            // foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' <<
+            // res2.preperiod <<
             // '\t'
             //   << res2.offset << '\n';
             return;
@@ -156,7 +160,8 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
         {
             ++totalCyclers;
             // if (res.preperiod >= 100 || res.period >= 100)
-            // foutc << setw(8) << total << '\t' << m.rule_str() << '\t' << res.period << '\t' << res.preperiod << '\n';
+            // foutc << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res.period << '\t' <<
+            // res.preperiod << '\n';
             return;
         }
         res2 = TranslatedCyclerDetector{}.findPeriod(m, pt, mst);
@@ -164,7 +169,8 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
         {
             ++totalTCyclers;
             // if (res2.period >= 1000 || res2.preperiod >= 1000)
-            // foutt << setw(8) << total << '\t' << m.rule_str() << '\t' << res2.period << '\t' << res2.preperiod <<
+            // foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' <<
+            // res2.preperiod <<
             // '\t'
             //   << res2.offset << '\n';
             return;
@@ -176,8 +182,8 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
         // if ((secondDiffsConstant(l)) || (secondDiffsConstant(r)))
         // {
         //     ++totalBouncers;
-        //     foutb << setw(8) << total << '\t' << m.rule_str() << '\t' << res.period << '\t' << res.preperiod << '\n';
-        //     return;
+        //     foutb << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res.period << '\t' <<
+        //     res.preperiod << '\n'; return;
         // }
         if (simulationSteps > 0)
         {
@@ -190,11 +196,11 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
                 m2.step();
             auto size2 = m2.tape().size();
             auto r = (double)size2 / size1;
-            fouto << setw(9) << r << '\t' << setw(8) << total << '\t' << m.rule_str() << '\t' << size1 << '\t' << size2
+            foutu << setw(9) << r << '\t' << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << size1 << '\t' << size2
                   << '\n';
         }
         else
-            fouto << setw(8) << total << '\t' << m.rule_str() << '\n';
+            foutu << setw(8) << total << '\t' << lnfRuleStr(m) << '\n';
         ++totalOther;
     });
     return tuple{total, totalCyclers, totalTCyclers, totalBouncers, totalOther};

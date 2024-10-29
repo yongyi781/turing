@@ -17,7 +17,8 @@ inline void print(const TuringMachine &m)
 
 auto solve(string code, Int periodBound)
 {
-    auto &&[a, b, c, d] = TranslatedCyclerDetector(true).findPeriodAndPreperiod(std::move(code), periodBound);
+    auto &&[a, b, c, d] = TranslatedCyclerDetector(true).findPeriodAndPreperiod(
+        std::move(code), numeric_limits<size_t>::max(), periodBound);
     return tuple{a, b, c};
 }
 

@@ -80,8 +80,9 @@ class CyclerDetector
     [[nodiscard]] constexpr bool verbose() const { return _verbose; }
 
     [[nodiscard]]
-    find_period_result findPeriod(TuringMachine machine, size_t periodBound, size_t maxSteps) const
+    find_period_result findPeriod(TuringMachine machine, size_t maxSteps, size_t startPeriodBound = 100) const
     {
+        size_t periodBound = startPeriodBound;
         TuringMachine prev2 = machine;
         maxSteps += machine.steps();
         while (machine.steps() <= maxSteps)
@@ -97,7 +98,11 @@ class CyclerDetector
                 lh = std::min(lh, machine.head());
                 hh = std::max(hh, machine.head());
                 if (machine.head() == prev.head() && checkForPeriod(prev, machine, lh, hh))
-                    return {i, machine.steps() - i, machine.head() - prev.head(), std::move(prev2)};
+                {
+                    TuringMachine lastMachine =
+                        i <= startPeriodBound ? std::move(prev2) : TuringMachine{machine.rule()};
+                    return {i, machine.steps() - i, machine.head() - prev.head(), std::move(lastMachine)};
+                }
             }
             periodBound = std::max(periodBound + 1, (size_t)(periodBound * 1.1));
             prev2 = prev;
@@ -108,11 +113,10 @@ class CyclerDetector
     /// The main period detection function. Returns (period, preperiod, offset).
     template <typename Self>
     [[nodiscard]] find_period_result findPeriodAndPreperiod(this const Self &self, TuringMachine machine,
-                                                            int64_t startPeriodBound,
-                                                            size_t maxSteps = std::numeric_limits<size_t>::max())
+                                                            size_t maxSteps, size_t startPeriodBound = 100)
     {
         auto rule = machine.rule();
-        auto res = self.findPeriod(machine, startPeriodBound, maxSteps);
+        auto res = self.findPeriod(machine, maxSteps, startPeriodBound);
         if (res.period == 0)
         {
             // No period found.
@@ -142,8 +146,9 @@ class TranslatedCyclerDetector : public CyclerDetector
     /// Finds a period for the given Turing machine rule code with the given period bound. The returned preperiod is
     /// only an upper bound.
     [[nodiscard]]
-    find_period_result findPeriod(TuringMachine machine, size_t periodBound, size_t maxSteps) const
+    find_period_result findPeriod(TuringMachine machine, size_t maxSteps, size_t startPeriodBound = 1000) const
     {
+        size_t periodBound = startPeriodBound;
         TuringMachine prev2 = machine;
         maxSteps += machine.steps();
         while (machine.steps() <= maxSteps)
@@ -161,7 +166,8 @@ class TranslatedCyclerDetector : public CyclerDetector
                     prev = machine;
                     expandDir = machine.head() < 0 ? -1 : 1;
                     if (verbose())
-                        std::cout << machine.steps() << " | " << machine.str(true) << '\n';
+                        std::cout << "period bound = " << periodBound << " | " << machine.steps() << " | "
+                                  << machine.str(true) << '\n';
                     break;
                 }
             }
@@ -171,7 +177,7 @@ class TranslatedCyclerDetector : public CyclerDetector
             // Now try to find a period
             int64_t lh = prev.head();
             int64_t hh = prev.head();
-            for (size_t p = 1; p <= periodBound; ++p)
+            for (size_t i = 1; i <= periodBound; ++i)
             {
                 auto &&[success, expanded] = machine.step();
                 if (!success)
@@ -191,7 +197,9 @@ class TranslatedCyclerDetector : public CyclerDetector
                         if (verbose())
                             std::cout << ansi::green << ansi::bold << "[found] " << ansi::reset << machine.steps()
                                       << " | " << machine.str(true) << '\n';
-                        return {p, machine.steps() - p, machine.head() - prev.head(), std::move(prev2)};
+                        TuringMachine lastMachine =
+                            i <= startPeriodBound ? std::move(prev2) : TuringMachine{machine.rule()};
+                        return {i, machine.steps() - i, machine.head() - prev.head(), std::move(lastMachine)};
                     }
                 }
             }

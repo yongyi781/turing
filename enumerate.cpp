@@ -128,14 +128,16 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
     auto &&[pt, mst] = getTranslatedCyclerBounds(nStates, nSymbols);
     size_t totalCyclers = 0;
     size_t totalTCyclers = 0;
+    size_t totalCounters = 0;
     size_t totalBouncers = 0;
     size_t totalOther = 0;
     size_t total = 0;
     string directory = "out/";
     directory += to_string(nStates) + "x" + to_string(nSymbols) + "/";
     // ofstream foutc(directory + "cyclers.txt");
-    // ofstream foutt(directory + "tcyclers.txt");
-    // ofstream foutb(directory + "bouncers.txt");
+    ofstream foutc(directory + "counters.txt");
+    ofstream foutt(directory + "tcyclers.txt");
+    ofstream foutb(directory + "bouncers.txt");
     ofstream foutu(directory + "unclassified.txt");
     foutu << fixed << setprecision(6);
     enumTMs(nStates, nSymbols, maxSteps, [&](auto m) {
@@ -144,18 +146,18 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
             cout << "So far: " << total << " total | " << totalCyclers << " cyclers | " << totalTCyclers
                  << " tcyclers | " << totalBouncers << " bouncers | " << totalOther << " other\n";
         // Get the short translated cyclers out of the way first.
-        auto res2 = TranslatedCyclerDetector{}.findPeriod(m, 120, 240);
+        // m.reset();
+        auto res2 = TranslatedCyclerDetector{}.findPeriod(m, 1000, 500);
         if (res2.period > 0)
         {
             ++totalTCyclers;
             // if (res2.period >= 1000 || res2.preperiod >= 1000)
-            // foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' <<
-            // res2.preperiod <<
+            // foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' << res2.preperiod <<
             // '\t'
-            //   << res2.offset << '\n';
+            //       << res2.offset << '\n';
             return;
         }
-        auto res = CyclerDetector{}.findPeriod(m, pc, msc);
+        auto res = CyclerDetector{}.findPeriod(m, msc, pc);
         if (res.period > 0)
         {
             ++totalCyclers;
@@ -164,15 +166,14 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
             // res.preperiod << '\n';
             return;
         }
-        res2 = TranslatedCyclerDetector{}.findPeriod(m, pt, mst);
+        m.reset();
+        res2 = TranslatedCyclerDetector{}.findPeriodAndPreperiod(m, mst, pt);
         if (res2.period > 0)
         {
             ++totalTCyclers;
             // if (res2.period >= 1000 || res2.preperiod >= 1000)
-            // foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' <<
-            // res2.preperiod <<
-            // '\t'
-            //   << res2.offset << '\n';
+            foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' << res2.preperiod << '\t'
+                  << res2.offset << '\n';
             return;
         }
         // Test bouncer
@@ -196,13 +197,33 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
                 m2.step();
             auto size2 = m2.tape().size();
             auto r = (double)size2 / size1;
-            foutu << setw(9) << r << '\t' << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << size1 << '\t' << size2
-                  << '\n';
+            if (r < 1.6)
+            {
+                ++totalCounters;
+                foutc << setw(9) << r << '\t' << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << size1 << '\t'
+                      << size2 << '\n';
+            }
+            else if (abs(r - sqrt(10)) < 0.01)
+            {
+                ++totalBouncers;
+                foutb << setw(9) << r << '\t' << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << size1 << '\t'
+                      << size2 << '\n';
+            }
+            else
+            {
+                ++totalOther;
+                foutu << setw(9) << r << '\t' << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << size1 << '\t'
+                      << size2 << '\n';
+            }
         }
         else
+        {
+            ++totalOther;
             foutu << setw(8) << total << '\t' << lnfRuleStr(m) << '\n';
-        ++totalOther;
+        }
     });
+    cout << "Total: " << total << " total | " << totalCyclers << " cyclers | " << totalTCyclers << " tcyclers | "
+         << totalCounters << " counters | " << totalBouncers << " bouncers | " << totalOther << " other\n";
     return tuple{total, totalCyclers, totalTCyclers, totalBouncers, totalOther};
 }
 
@@ -218,7 +239,7 @@ int main(int argc, char *argv[])
     size_t maxSteps = defaultMaxSteps(nStates, nSymbols);
     if (argc > 3)
         maxSteps = stoull(args[3]);
-    size_t simulationSteps = 0;
+    size_t simulationSteps = 10000;
     if (argc > 4)
         simulationSteps = stoull(args[4]);
     nStates = std::min(nStates, 5);

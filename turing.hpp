@@ -137,14 +137,14 @@ class Tape
         auto start = std::find_if(_data.begin(), _data.end(), [](auto x) { return x != 0; });
         if (start == _data.end())
             return std::string(headPrefix) + std::string(headSuffix);
-        if (_data.begin() + _head < start)
-            start = _data.begin() + _head;
+        if (_data.begin() + _head + _offset < start)
+            start = _data.begin() + _head + _offset;
         auto end = std::find_if(_data.rbegin(), _data.rend(), [](auto x) { return x != 0; }).base();
-        if (_data.begin() + _head >= end)
-            end = _data.begin() + _head + 1;
+        if (_data.begin() + _head + _offset >= end)
+            end = _data.begin() + _head + _offset + 1;
         for (auto it = start; it != end; ++it)
         {
-            if (it == _data.begin() + _head)
+            if (it == _data.begin() + _head + _offset)
             {
                 if (c > 0)
                     s1 += toStringHelper(c);
@@ -155,7 +155,7 @@ class Tape
             }
             else if (*it == 0)
             {
-                (it < _data.begin() + _head ? s1 : s2) += toStringHelper(c);
+                (it < _data.begin() + _head + _offset ? s1 : s2) += toStringHelper(c);
                 c = 0;
             }
             else
@@ -177,14 +177,14 @@ class Tape
         auto start = std::find_if(_data.begin(), _data.end(), [](auto x) { return x != 0; });
         if (start == _data.end())
             return std::string(headPrefix) + std::string(headSuffix);
-        if (_data.begin() + _head < start)
-            start = _data.begin() + _head;
+        if (_data.begin() + _head + _offset < start)
+            start = _data.begin() + _head + _offset;
         auto end = std::find_if(_data.rbegin(), _data.rend(), [](auto x) { return x != 0; }).base();
-        if (_data.begin() + _head >= end)
-            end = _data.begin() + _head + 1;
+        if (_data.begin() + _head + _offset >= end)
+            end = _data.begin() + _head + _offset + 1;
         for (auto it = start; it != end; ++it)
         {
-            if (it == _data.begin() + _head)
+            if (it == _data.begin() + _head + _offset)
             {
                 if (c > 0)
                     s += toStringRLE(curr, c);
@@ -479,12 +479,13 @@ struct packed_transition
 {
     tape_segment from;
     tape_segment to;
+    size_t steps;
 
     template <typename CharT, typename Traits>
     friend std::basic_ostream<CharT, Traits> &operator<<(std::basic_ostream<CharT, Traits> &o,
                                                          const turing::packed_transition &ts)
     {
-        return o << ts.from << " → " << ts.to;
+        return o << ts.from << " → " << ts.to << " (" << ts.steps << ")";
     }
 };
 

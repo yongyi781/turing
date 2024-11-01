@@ -60,16 +60,18 @@ inline vector<int> analyze(turing::TuringMachine machine, state_type stateToAnal
         }
         else
         {
+            bool print = true;
             // If there is a symbol filter, update lh and hh
-            if (symbolToAnalyze != (uint8_t)-1)
+            // if (symbolToAnalyze != (uint8_t)-1)
             {
                 lh = min(lh, machine.tape().head());
                 hh = max(hh, machine.tape().head());
             }
             // Print the result
             ostringstream ss;
-            ss << setw(7) << machine.steps() << " | " << machine.str(true, printWidth) << " | ";
-            ss << machine.str1(true, printWidth) << " | ";
+            ss << setw(7) << machine.steps() << " | ";
+            // ss << machine.str(true, printWidth) << " | ";
+            ss << machine.str1(true, 2 * printWidth) << " | ";
             if (first)
                 first = false;
             else
@@ -79,13 +81,17 @@ inline vector<int> analyze(turing::TuringMachine machine, state_type stateToAnal
                 packed_transition key{fromSegment, toSegment, machine.steps() - steps};
                 if (!tMap.contains(key))
                     tMap[key] = counter++;
+                else
+                    print = false;
                 int mIndex = tMap[key];
                 ts.push_back(mIndex + 1);
                 auto x = machine.head() - tape.head();
                 ss << getFgStyle(mIndex) << setw(4) << "T" + to_string(mIndex + 1) << ansi::reset << " = [" << key
                    << "] (" << (x < 0 ? '-' : '+') << abs(x) << ")";
+                // print = mIndex == 3;
             }
-            cout << std::move(ss).str() << '\n';
+            if (print)
+                cout << std::move(ss).str() << '\n';
             tape = machine.tape();
             steps = machine.steps();
             lh = hh = machine.head();

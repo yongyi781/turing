@@ -143,11 +143,9 @@ class Tape
         if (_data.begin() + _head + _offset >= end)
             end = _data.begin() + _head + _offset + 1;
         for (auto it = start; it != end; ++it)
-        {
             if (it == _data.begin() + _head + _offset)
             {
-                if (c > 0)
-                    s1 += toStringHelper(c);
+                s1 += toStringHelper(c);
                 c = 0;
                 sHead += headPrefix;
                 sHead += **this == 0 ? zeroChar : (char)('0' + **this);
@@ -160,7 +158,6 @@ class Tape
             }
             else
                 ++c;
-        }
         if (c > 0)
             s2 += toStringHelper(c);
         return std::string(std::max(0, ((int)width - 1) / 2 - (int)s1.size()), ' ') + s1 + sHead + s2 +

@@ -29,7 +29,7 @@ constexpr pair<size_t, size_t> getCyclerBounds(int nStates, int nSymbols)
         if (nStates == 3)
             return pair{18, 36};
         if (nStates == 4)
-            return pair{120, 240};
+            return pair{120, 360};
     }
     return pair{500, 1500};
 }
@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
     size_t maxSteps = defaultMaxSteps(nStates, nSymbols);
     if (argc > 3)
         maxSteps = stoull(args[3]);
-    size_t simulationSteps = 10000;
+    size_t simulationSteps = 100000;
     if (argc > 4)
         simulationSteps = stoull(args[4]);
     nStates = std::min(nStates, 5);

@@ -5,6 +5,8 @@
 
 namespace turing
 {
+constexpr double periodGrowthRatio = 1.2;
+
 /// Checks period of before and after.
 inline bool checkForPeriod(const TuringMachine &before, const TuringMachine &after, int64_t start, int64_t stop)
 {
@@ -104,7 +106,7 @@ class CyclerDetector
                     return {i, machine.steps() - i, machine.head() - prev.head(), std::move(lastMachine)};
                 }
             }
-            periodBound = std::max(periodBound + 1, (size_t)(periodBound * 1.1));
+            periodBound = std::max(periodBound + 1, (size_t)(periodBound * periodGrowthRatio));
             prev2 = prev;
         }
         return {};
@@ -203,7 +205,7 @@ class TranslatedCyclerDetector : public CyclerDetector
                     }
                 }
             }
-            periodBound = std::max(periodBound + 1, (size_t)(periodBound * 1.1));
+            periodBound = std::max(periodBound + 1, (size_t)(periodBound * periodGrowthRatio));
             prev2 = prev;
         }
         return {};

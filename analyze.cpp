@@ -5,27 +5,6 @@ using namespace std;
 using namespace turing;
 using Int = int64_t;
 
-string getFgStyle(int index)
-{
-    switch (index)
-    {
-    case 0:
-        return ansi::str(ansi::red);
-    case 1:
-        return ansi::str(ansi::yellow);
-    case 2:
-        return ansi::str(ansi::blue);
-    case 3:
-        return ansi::str(ansi::green);
-    case 4:
-        return ansi::str(ansi::magenta);
-    case 5:
-        return ansi::str(ansi::brightCyan);
-    default:
-        return ansi::str(ansi::white);
-    }
-}
-
 bool compareSymbol(symbol_type pattern, symbol_type b)
 {
     if (pattern == (uint8_t)-1)
@@ -33,75 +12,172 @@ bool compareSymbol(symbol_type pattern, symbol_type b)
     return pattern == b;
 }
 
-inline vector<int> analyze(turing::TuringMachine machine, state_type stateToAnalyze, symbol_type symbolToAnalyze,
+/// Puts brackets around the number if it's ≥ 10.
+inline std::string countToString(size_t c)
+{
+    if (c == 0)
+        return {' '};
+    if (c < 10)
+        return std::to_string(c);
+    return "[" + std::to_string(c) + "]";
+}
+
+inline std::string toStringRLE(symbol_type x, size_t c)
+{
+    if (x == (symbol_type)-1)
+        return "";
+    std::string s{1, (char)('0' + x)};
+    return s + "^" + std::to_string(c) + " ";
+}
+
+/// Returns a string representation of this tape, by encoding runs of 1s. For example, 1_11_111 is 123, and 1__1
+/// is 101.
+[[nodiscard]] std::string str(const Tape &tape, size_t width = 60)
+{
+    auto headPrefix = getBgStyle(tape.state());
+    auto headSuffix = ansi::str(ansi::reset);
+    std::string s1;
+    std::string sHead;
+    std::string s2;
+    size_t c = 0;
+    auto start = std::find_if(tape.data().begin(), tape.data().end(), [](auto x) { return x != 0; });
+    if (start == tape.data().end())
+        return std::string(headPrefix) + std::string(headSuffix);
+    if (tape.data().begin() + tape.head() + tape.offset() < start)
+        start = tape.data().begin() + tape.head() + tape.offset();
+    auto end = std::find_if(tape.data().rbegin(), tape.data().rend(), [](auto x) { return x != 0; }).base();
+    if (tape.data().begin() + tape.head() + tape.offset() >= end)
+        end = tape.data().begin() + tape.head() + tape.offset() + 1;
+    for (auto it = start; it != end; ++it)
+        if (it == tape.data().begin() + tape.head() + tape.offset())
+        {
+            s1 += countToString(c);
+            c = 0;
+            sHead += headPrefix;
+            sHead += *tape == 0 ? ' ' : (char)('0' + *tape);
+            sHead += headSuffix;
+        }
+        else if (*it == 0)
+        {
+            (it < tape.data().begin() + tape.head() + tape.offset() ? s1 : s2) += countToString(c);
+            c = 0;
+        }
+        else
+            ++c;
+    if (c > 0)
+        s2 += countToString(c);
+    return std::string(std::max(0, ((int)width - 1) / 2 - (int)s1.size()), ' ') + s1 + sHead + s2 +
+           std::string(std::max(0, (int)width / 2 - (int)s2.size()), ' ');
+}
+
+/// Returns a string representation of this tape, in run length encoding.
+[[nodiscard]] std::string strRle(const Tape &tape, std::string_view headPrefix = ">", std::string_view headSuffix = "")
+{
+    std::string s;
+    auto curr = (symbol_type)-1;
+    size_t c = 0;
+    auto start = std::find_if(tape.data().begin(), tape.data().end(), [](auto x) { return x != 0; });
+    if (start == tape.data().end())
+        return std::string(headPrefix) + std::string(headSuffix);
+    if (tape.data().begin() + tape.head() + tape.offset() < start)
+        start = tape.data().begin() + tape.head() + tape.offset();
+    auto end = std::find_if(tape.data().rbegin(), tape.data().rend(), [](auto x) { return x != 0; }).base();
+    if (tape.data().begin() + tape.head() + tape.offset() >= end)
+        end = tape.data().begin() + tape.head() + tape.offset() + 1;
+    for (auto it = start; it != end; ++it)
+    {
+        if (it == tape.data().begin() + tape.head() + tape.offset())
+        {
+            if (c > 0)
+                s += toStringRLE(curr, c);
+            curr = (symbol_type)-1;
+            c = 0;
+            s += headPrefix;
+            s += (char)('0' + *tape);
+            s += headSuffix;
+            s += ' ';
+        }
+        else if (*it == curr)
+            ++c;
+        else
+        {
+            if (c > 0)
+                s += toStringRLE(curr, c);
+            curr = *it;
+            c = 1;
+        }
+    }
+    if (c > 0)
+        s += toStringRLE(curr, c);
+    return s;
+}
+
+inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, symbol_type symbolToAnalyze,
                            size_t maxSteps = 10000, size_t printWidth = 60)
 {
-    if (machine.state() == stateToAnalyze && compareSymbol(symbolToAnalyze, *machine.tape()))
-        cout << setw(7) << machine.steps() << " | " << machine.str(true, printWidth) << '\n';
+    if (m.state() == stateToAnalyze && compareSymbol(symbolToAnalyze, *m.tape()))
+        cout << setw(7) << m.steps() << " | " << str(m.tape(), printWidth) << '\n';
 
-    auto tape = machine.tape();
-    auto steps = machine.steps();
+    auto tape = m.tape();
+    auto steps = m.steps();
     int64_t lh = tape.head();
     int64_t hh = tape.head();
 
     boost::unordered_flat_map<packed_transition, int> tMap;
     vector<int> ts;
     int counter = 0;
-    bool first = machine.state() != stateToAnalyze || !compareSymbol(symbolToAnalyze, *machine.tape());
+    bool first = m.state() != stateToAnalyze || !compareSymbol(symbolToAnalyze, *m.tape());
 
-    for (size_t i = 0; i < maxSteps && !machine.halted(); ++i)
+    for (size_t i = 0; i < maxSteps && !m.halted(); ++i)
     {
-        machine.step();
-        if (!machine.halted() &&
-            (machine.state() != stateToAnalyze || !compareSymbol(symbolToAnalyze, *machine.tape())))
+        m.step();
+        if (!m.halted() && (m.state() != stateToAnalyze || !compareSymbol(symbolToAnalyze, *m.tape())))
         {
-            lh = min(lh, machine.tape().head());
-            hh = max(hh, machine.tape().head());
+            lh = min(lh, m.tape().head());
+            hh = max(hh, m.tape().head());
         }
         else
         {
             bool print = true;
             // If there is a symbol filter, update lh and hh
-            // if (symbolToAnalyze != (uint8_t)-1)
+            if (symbolToAnalyze != (uint8_t)-1)
             {
-                lh = min(lh, machine.tape().head());
-                hh = max(hh, machine.tape().head());
+                lh = min(lh, m.tape().head());
+                hh = max(hh, m.tape().head());
             }
             // Print the result
             ostringstream ss;
-            ss << setw(7) << machine.steps() << " | ";
-            // ss << machine.str(true, printWidth) << " | ";
-            ss << machine.str1(true, 2 * printWidth) << " | ";
+            ss << setw(7) << m.steps() << " | ";
+            ss << str(m.tape(), 2 * printWidth) << " | ";
             if (first)
                 first = false;
             else
             {
-                auto fromSegment = getTapeSegment(tape, stateToAnalyze, lh, hh);
-                auto toSegment = getTapeSegment(machine.tape(), machine.state(), lh, hh);
-                packed_transition key{fromSegment, toSegment, machine.steps() - steps};
+                auto fromSegment = tape.getSegment(lh, hh);
+                auto toSegment = m.tape().getSegment(lh, hh);
+                packed_transition key{fromSegment, toSegment, m.steps() - steps};
                 if (!tMap.contains(key))
                     tMap[key] = counter++;
-                else
-                    print = false;
+                // else
+                //     print = false;
                 int mIndex = tMap[key];
                 ts.push_back(mIndex + 1);
-                auto x = machine.head() - tape.head();
+                auto x = m.head() - tape.head();
                 ss << getFgStyle(mIndex) << setw(4) << "T" + to_string(mIndex + 1) << ansi::reset << " = [" << key
                    << "] (" << (x < 0 ? '-' : '+') << abs(x) << ")";
                 // print = mIndex == 3;
             }
             if (print)
                 cout << std::move(ss).str() << '\n';
-            tape = machine.tape();
-            steps = machine.steps();
-            lh = hh = machine.head();
+            tape = m.tape();
+            steps = m.steps();
+            lh = hh = m.head();
         }
     }
     cout << "transitions = " << ts.size() << " | distinct transitions = " << tMap.size() << '\n';
     return ts;
 }
 
-inline turing::TuringMachine universal23() { return {"1RB2LA1LA_2LA2RB0RA"}; }
 inline turing::TuringMachine bb622() { return {"1RB0RF_1RC0LD_1LB1RC_---0LE_1RA1LE_---0RC"}; }
 
 auto solve(string code, state_type state, state_type symbol, size_t steps)

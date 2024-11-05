@@ -37,8 +37,6 @@ inline bool isPeriodic(TuringMachine m, size_t period)
 [[nodiscard]] inline size_t findPreperiod(TuringMachine m, size_t period, size_t low, size_t high, bool verbose = false)
 {
     assert(low <= high);
-    if (low < 0)
-        low = 0;
     // Binary search
     for (size_t i = m.steps(); i < low; ++i)
         m.step();
@@ -90,7 +88,7 @@ class CyclerDetector
         while (machine.steps() <= maxSteps)
         {
             if (_verbose)
-                std::cout << machine.steps() << " | " << machine.str(true) << '\n';
+                std::cout << machine.steps() << " | " << machine.prettyStr() << '\n';
             TuringMachine prev = machine;
             int64_t lh = prev.head();
             int64_t hh = prev.head();
@@ -169,7 +167,7 @@ class TranslatedCyclerDetector : public CyclerDetector
                     expandDir = machine.head() < 0 ? -1 : 1;
                     if (verbose())
                         std::cout << "period bound = " << periodBound << " | " << machine.steps() << " | "
-                                  << machine.str(true) << '\n';
+                                  << machine.prettyStr() << '\n';
                     break;
                 }
             }
@@ -198,7 +196,7 @@ class TranslatedCyclerDetector : public CyclerDetector
                     {
                         if (verbose())
                             std::cout << ansi::green << ansi::bold << "[found] " << ansi::reset << machine.steps()
-                                      << " | " << machine.str(true) << '\n';
+                                      << " | " << machine.prettyStr() << '\n';
                         TuringMachine lastMachine =
                             i <= startPeriodBound ? std::move(prev2) : TuringMachine{machine.rule()};
                         return {i, machine.steps() - i, machine.head() - prev.head(), std::move(lastMachine)};

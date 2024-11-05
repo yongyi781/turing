@@ -11,7 +11,7 @@ constexpr int diffLowerBound = 2;
 void print(const TuringMachine &m)
 {
     cout << setw(10) << m.steps() << " | " << m.tape().size() << " | " << (double)m.steps() / m.tape().size();
-    cout << " | " << m.str(true, 10) << '\n';
+    cout << " | " << m.prettyStr(10) << '\n';
 }
 
 string formatDelta(size_t a, size_t b)

@@ -1,4 +1,6 @@
 #include "pch.hpp"
+
+#include "detect_period.hpp"
 #include "turing.hpp"
 
 using namespace std;
@@ -84,13 +86,12 @@ auto solve()
         if (!allStatesReachable(r))
             return;
         ++total;
-        auto p = turing::findTranslatedCyclerPeriod(r, 1000, 1000);
+        auto &&[p, s, _, _] = TranslatedCyclerDetector{}.findPeriodAndPreperiod(r, 3000, 100);
         ++hist[p];
-        // if (p == 0 || p >= 100)
-        // cout << setw(4) << p << " | " << to_string(r) << '\n';
-        if (p == 2)
+        if (p > 50)
         {
-            turing::TuringMachine m{r};
+            cout << setw(4) << p << " | " << to_string(r) << '\n';
+            TuringMachine m{r};
             size_t tapeSize2 = 0;
             for (int i = 1; i <= nSteps; ++i)
             {

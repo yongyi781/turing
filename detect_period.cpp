@@ -9,12 +9,6 @@ using namespace std;
 using namespace turing;
 using Int = int64_t;
 
-inline void print(const TuringMachine &m)
-{
-    cout << setw(10) << m.steps();
-    cout << " | " << m.str(true, 20) << '\n';
-}
-
 auto solve(string code, Int periodBound)
 {
     auto &&[a, b, c, d] = TranslatedCyclerDetector(true).findPeriodAndPreperiod(

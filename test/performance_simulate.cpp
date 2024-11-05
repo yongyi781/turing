@@ -5,7 +5,7 @@ using namespace std;
 using namespace turing;
 using Int = int64_t;
 
-constexpr int headerWidth = 30;
+constexpr int headerWidth = 32;
 
 void bb5Champion(size_t nSteps = 47176870)
 {
@@ -32,8 +32,9 @@ void cycler483328(size_t nSteps = 100000000)
 }
 
 // Manual compilation is about twice as fast. `1RB1LC_0LA1RD_1LA0LC_0RB0RD`
-void cycler483328Manual(size_t nSteps = 100000000)
+void cycler483328Decompiled(size_t nSteps = 100000000)
 {
+    using direction::left, direction::right;
     Tape tape;
     size_t steps = 0;
     auto t1 = now();
@@ -41,44 +42,44 @@ void cycler483328Manual(size_t nSteps = 100000000)
     {
         if (*tape == 0)
         {
-            tape.step(1, direction::right);
+            tape.step({.symbol = 1, .direction = right});
             if (++steps == nSteps)
                 break;
             while (*tape != 0)
             {
-                tape.step(1, direction::right);
+                tape.step({.symbol = 1, .direction = right});
                 if (++steps == nSteps)
                     break;
                 while (*tape != 0)
-                    tape.step(0, direction::right);
+                    tape.step({.symbol = 0, .direction = right});
                 if (++steps == nSteps)
                     break;
-                tape.step(0, direction::right);
+                tape.step({.symbol = 0, .direction = right});
                 if (++steps == nSteps)
                     break;
             }
             if (steps == nSteps)
                 break;
-            tape.step(0, direction::left);
+            tape.step({.symbol = 0, .direction = left});
             if (++steps == nSteps)
                 break;
         }
         else
         {
-            tape.step(1, direction::left);
+            tape.step({.symbol = 1, .direction = left});
             if (++steps == nSteps)
                 break;
             while (*tape != 0)
-                tape.step(0, direction::left);
+                tape.step({.symbol = 0, .direction = left});
             if (++steps == nSteps)
                 break;
-            tape.step(1, direction::left);
+            tape.step({.symbol = 1, .direction = left});
             if (++steps == nSteps)
                 break;
         }
     }
     auto ns = duration_cast<std::chrono::nanoseconds>(now() - t1).count();
-    cout << setw(headerWidth) << "T-cycler p483328 (manual): " << steps << " steps, " << (double)ns / steps
+    cout << setw(headerWidth) << "T-cycler p483328 (decompiled): " << steps << " steps, " << (double)ns / steps
          << " ns per step\n";
 }
 
@@ -90,7 +91,7 @@ void cycler32779478(size_t nSteps = 100000000)
         if (!m.step().success)
             break;
     auto ns = duration_cast<std::chrono::nanoseconds>(now() - t1).count();
-    cout << setw(headerWidth) << "T-cycler p1q32779478: " << m.steps() << " steps, " << (double)ns / m.steps()
+    cout << setw(headerWidth) << "T-cycler p1s32779478: " << m.steps() << " steps, " << (double)ns / m.steps()
          << " ns per step\n";
 }
 
@@ -99,6 +100,6 @@ int main()
     cout << fixed << setprecision(2);
     bb5Champion();
     cycler483328();
-    cycler483328Manual();
+    cycler483328Decompiled();
     cycler32779478();
 }

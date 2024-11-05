@@ -78,8 +78,8 @@ bool secondDiffsConstant(std::ranges::range auto &&r)
 
 template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxSteps, Callback f)
 {
-    auto nextIsHalt = [](const TuringMachine &m) { return m.peek().nextState == -1; };
-    auto isFilled = [](const TuringMachine &m) { return ranges::all_of(m.rule(), fun(t, t.nextState != -1)); };
+    auto nextIsHalt = [](const TuringMachine &m) { return m.peek().toState == -1; };
+    auto isFilled = [](const TuringMachine &m) { return ranges::all_of(m.rule(), fun(t, t.toState != -1)); };
     turing_rule r(nStates, nSymbols);
     r[0, 0] = {1, direction::right, 1};
     TuringMachine root{r};
@@ -97,7 +97,7 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
                         {
                             auto r = m.rule();
                             r[m.state(), *m.tape()] = {symbol, dir, state};
-                            TuringMachine m2{std::move(r), m.tape(), m.state(), m.steps()};
+                            TuringMachine m2{std::move(r), m.tape(), m.steps()};
                             if (!isFilled(m2))
                                 while (m2.steps() < maxSteps && !nextIsHalt(m2))
                                     m2.step();
@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
     size_t maxSteps = defaultMaxSteps(nStates, nSymbols);
     if (argc > 3)
         maxSteps = stoull(args[3]);
-    size_t simulationSteps = 100000;
+    size_t simulationSteps = 1000000;
     if (argc > 4)
         simulationSteps = stoull(args[4]);
     nStates = std::min(nStates, 5);

@@ -115,7 +115,6 @@ class CyclerDetector
     [[nodiscard]] find_period_result findPeriodAndPreperiod(this const Self &self, TuringMachine machine,
                                                             size_t maxSteps, size_t startPeriodBound = 100)
     {
-        auto rule = machine.rule();
         auto res = self.findPeriod(machine, maxSteps, startPeriodBound);
         if (res.period == 0)
         {

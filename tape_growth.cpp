@@ -8,10 +8,11 @@ using namespace turing;
 
 constexpr int diffLowerBound = 2;
 
-void print(const TuringMachine &m)
+ostream &print(const TuringMachine &m)
 {
-    cout << setw(10) << m.steps() << " | " << m.tape().size() << " | " << (double)m.steps() / m.tape().size();
-    cout << " | " << m.prettyStr(10) << '\n';
+    cout << setw(6) << m.tape().size() << " | " << setw(10) << m.steps();
+    cout << " | " << m.prettyStr(40) << '\n';
+    return cout;
 }
 
 string formatDelta(size_t a, size_t b)
@@ -44,16 +45,16 @@ auto solve(string_view code, int growDir, state_type matchState, size_t maxSteps
             // Tape grew
             if (growDir != 1 && m.head() < 0 && m.steps() - lSteps.back() >= diffLowerBound)
             {
-                cout << "L | ";
+                cout << ansi::fg(204, 220, 255) << "L | ";
                 cout << setw(13) << formatDelta(lSteps.back(), m.steps()) << " | ";
-                print(m);
+                print(m) << ansi::reset;
                 lSteps.push_back(m.steps());
             }
             if (growDir != -1 && m.head() > 0 && m.steps() - rSteps.back() >= diffLowerBound)
             {
-                cout << string(50, ' ') << "R | ";
+                cout << ansi::fg(255, 204, 204) << " R| ";
                 cout << setw(13) << formatDelta(rSteps.back(), m.steps()) << " | ";
-                print(m);
+                print(m) << ansi::reset;
                 rSteps.push_back(m.steps());
             }
         }

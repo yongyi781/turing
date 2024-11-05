@@ -29,7 +29,26 @@ struct transition
     state_type toState = -1;
 };
 
-using turing_rule = vector2d<transition>;
+constexpr size_t maxStates = 8;
+constexpr size_t maxSymbols = 8;
+class turing_rule
+{
+  public:
+    constexpr turing_rule(size_t nStates = 0, size_t nSymbols = 0) : _nStates(nStates), _nSymbols(nSymbols) {}
+
+    [[nodiscard]] constexpr size_t rows() const { return _nStates; }
+    constexpr void rows(size_t n) { _nStates = n; }
+    [[nodiscard]] constexpr size_t columns() const { return _nSymbols; }
+    constexpr void columns(size_t n) { _nSymbols = n; }
+
+    [[nodiscard]] constexpr transition &operator[](size_t i, size_t j) { return _data[i][j]; }
+    [[nodiscard]] constexpr const transition &operator[](size_t i, size_t j) const { return _data[i][j]; }
+
+  private:
+    std::array<std::array<transition, maxSymbols>, maxStates> _data{};
+    size_t _nStates = 0;
+    size_t _nSymbols = 0;
+};
 
 // Trim from start (in place)
 inline void ltrim(std::string &s)
@@ -51,7 +70,7 @@ inline std::string getBgStyle(state_type state)
     case 0:
         return ansi::bg(128, 0, 0);
     case 1:
-        return ansi::bg(128, 96, 0) + ansi::str(ansi::black);
+        return ansi::bg(128, 96, 0);
     case 2:
         return ansi::bg(32, 64, 255);
     case 3:
@@ -147,7 +166,6 @@ class Tape
   public:
     using container_type = std::vector<symbol_type>;
     static constexpr size_t defaultPrintWidth = 50;
-    static constexpr char zeroChar = '0';
 
     symbol_type &operator*() { return _data[_head + _offset]; }
     constexpr symbol_type operator*() const { return _data[_head + _offset]; }
@@ -198,7 +216,7 @@ class Tape
     /// Returns a string representation of this tape, colored for the terminal.
     [[nodiscard]] constexpr std::string prettyStr(size_t width = defaultPrintWidth) const
     {
-        return strAux(width, false, getBgStyle(_state), ansi::str(ansi::reset));
+        return strAux(width, false, getBgStyle(_state), ansi::str(ansi::bgDefault));
     }
 
     /// Gets the tape segment, inclusive.
@@ -331,8 +349,6 @@ inline turing_rule lexicalNormalForm(const turing_rule &rule)
 class TuringMachine
 {
   public:
-    using rule_type = turing_rule;
-
     struct step_result
     {
         // False if the machine was already in a halt state.
@@ -342,7 +358,7 @@ class TuringMachine
     };
 
     constexpr TuringMachine(turing_rule rule = {}, Tape tape = {}, size_t steps = 0)
-        : _rule(std::move(rule)), _tape(std::move(tape)), _steps(steps)
+        : _rule(rule), _tape(std::move(tape)), _steps(steps)
     {
     }
 
@@ -365,7 +381,8 @@ class TuringMachine
                              .to();
                      })
                      .to();
-        _rule.resize(v.size(), v[0].size());
+        _rule.rows(v.size());
+        _rule.columns(v[0].size());
         for (size_t i = 0; i < v.size(); ++i)
             for (size_t j = 0; j < v[i].size(); ++j)
                 _rule[i, j] = v[i][j];
@@ -374,7 +391,7 @@ class TuringMachine
     [[nodiscard]] constexpr size_t numStates() const { return _rule.rows(); }
     [[nodiscard]] constexpr size_t numColors() const { return _rule.columns(); }
 
-    [[nodiscard]] constexpr const rule_type &rule() const { return _rule; }
+    [[nodiscard]] constexpr const turing_rule &rule() const { return _rule; }
     [[nodiscard]] constexpr std::string ruleStr() const { return to_string(_rule); }
     [[nodiscard]] constexpr const Tape &tape() const { return _tape; }
     constexpr void tape(Tape newTape) { _tape = std::move(newTape); }
@@ -414,7 +431,7 @@ class TuringMachine
     [[nodiscard]] std::string prettyStr(size_t width = Tape::defaultPrintWidth) const { return _tape.prettyStr(width); }
 
   private:
-    rule_type _rule;
+    turing_rule _rule;
     Tape _tape;
     size_t _steps = 0;
 };

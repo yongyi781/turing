@@ -9,10 +9,10 @@ using namespace std;
 using namespace turing;
 using Int = int64_t;
 
-auto solve(string code, Int periodBound)
+auto solve(string code, Int initialPeriodBound)
 {
     auto &&[a, b, c, d] = TranslatedCyclerDetector(true).findPeriodAndPreperiod(
-        std::move(code), numeric_limits<size_t>::max(), periodBound);
+        std::move(code), numeric_limits<size_t>::max(), initialPeriodBound);
     return tuple{a, b, c};
 }
 
@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 {
     span args(argv, argc);
     string code = "1RB0LC_1RD1LC_0LA1LB_1LC0RD";
-    Int periodBound = 1000;
+    Int initialPeriodBound = 10000000;
     if (argc > 1)
     {
         code = args[1];
@@ -31,6 +31,6 @@ int main(int argc, char *argv[])
         }
     }
     if (argc > 2)
-        periodBound = stoull(args[2]);
-    printTiming(solve, code, periodBound);
+        initialPeriodBound = stoull(args[2]);
+    printTiming(solve, code, initialPeriodBound);
 }

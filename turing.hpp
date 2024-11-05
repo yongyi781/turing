@@ -445,43 +445,6 @@ inline bool spansEqual(const Tape &t1, const Tape &t2, int64_t start, int64_t en
     return true;
 }
 
-/// Finds the period of the given Turing machine.
-inline int64_t findTranslatedCyclerPeriod(TuringMachine machine, size_t initialSteps = 100, size_t maxPeriod = 100)
-{
-    for (size_t i = 0; i < initialSteps; ++i)
-    {
-        machine.step();
-        if (machine.halted())
-            return {};
-    }
-    auto startTape = machine.tape();
-    auto startState = machine.state();
-    int64_t startHead = startTape.head();
-    int64_t ld = 0;
-    int64_t hd = 0;
-    for (size_t p = 1; p <= maxPeriod; ++p)
-    {
-        machine.step();
-        if (machine.halted())
-            return {};
-        if (machine.state() == startState)
-        {
-            auto l = ld;
-            auto h = hd;
-            if (machine.tape().head() < startHead)
-                l = std::min(-startTape.offset() - startHead, -machine.tape().offset() - machine.tape().head());
-            else if (machine.tape().head() > startHead)
-                h = std::max(startTape.data().size() - startHead - startTape.offset(),
-                             machine.tape().data().size() - machine.tape().head() - machine.tape().offset());
-            if (spansEqual(startTape, machine.tape(), l, h))
-                return p;
-        }
-        ld = std::min(ld, machine.tape().head() - startHead);
-        hd = std::max(hd, machine.tape().head() - startHead);
-    }
-    return {};
-}
-
 /// Hash
 constexpr size_t hash_value(const turing::tape_segment &t)
 {

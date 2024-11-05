@@ -22,94 +22,33 @@ inline std::string countToString(size_t c)
     return "[" + std::to_string(c) + "]";
 }
 
-inline std::string toStringRLE(symbol_type x, size_t c)
-{
-    if (x == (symbol_type)-1)
-        return "";
-    std::string s{1, (char)('0' + x)};
-    return s + "^" + std::to_string(c) + " ";
-}
-
 /// Returns a string representation of this tape, by encoding runs of 1s. For example, 1_11_111 is 123, and 1__1
 /// is 101.
-[[nodiscard]] std::string str(const Tape &tape, size_t width = 60)
+std::string str1(const ranges::range auto &&data)
+{
+    string res;
+    size_t c = 0;
+    for (auto &&x : data)
+        if (x == 0)
+        {
+            res += countToString(c);
+            c = 0;
+        }
+        else
+            ++c;
+    res += countToString(c);
+    return res;
+}
+
+std::string str(const Tape &tape, size_t width)
 {
     auto headPrefix = getBgStyle(tape.state());
     auto headSuffix = ansi::str(ansi::reset);
-    std::string s1;
-    std::string sHead;
-    std::string s2;
-    size_t c = 0;
-    auto start = std::find_if(tape.data().begin(), tape.data().end(), [](auto x) { return x != 0; });
-    if (start == tape.data().end())
-        return std::string(headPrefix) + std::string(headSuffix);
-    if (tape.data().begin() + tape.head() + tape.offset() < start)
-        start = tape.data().begin() + tape.head() + tape.offset();
-    auto end = std::find_if(tape.data().rbegin(), tape.data().rend(), [](auto x) { return x != 0; }).base();
-    if (tape.data().begin() + tape.head() + tape.offset() >= end)
-        end = tape.data().begin() + tape.head() + tape.offset() + 1;
-    for (auto it = start; it != end; ++it)
-        if (it == tape.data().begin() + tape.head() + tape.offset())
-        {
-            s1 += countToString(c);
-            c = 0;
-            sHead += headPrefix;
-            sHead += *tape == 0 ? ' ' : (char)('0' + *tape);
-            sHead += headSuffix;
-        }
-        else if (*it == 0)
-        {
-            (it < tape.data().begin() + tape.head() + tape.offset() ? s1 : s2) += countToString(c);
-            c = 0;
-        }
-        else
-            ++c;
-    if (c > 0)
-        s2 += countToString(c);
-    return std::string(std::max(0, ((int)width - 1) / 2 - (int)s1.size()), ' ') + s1 + sHead + s2 +
-           std::string(std::max(0, (int)width / 2 - (int)s2.size()), ' ');
-}
-
-/// Returns a string representation of this tape, in run length encoding.
-[[nodiscard]] std::string strRle(const Tape &tape, std::string_view headPrefix = ">", std::string_view headSuffix = "")
-{
-    std::string s;
-    auto curr = (symbol_type)-1;
-    size_t c = 0;
-    auto start = std::find_if(tape.data().begin(), tape.data().end(), [](auto x) { return x != 0; });
-    if (start == tape.data().end())
-        return std::string(headPrefix) + std::string(headSuffix);
-    if (tape.data().begin() + tape.head() + tape.offset() < start)
-        start = tape.data().begin() + tape.head() + tape.offset();
-    auto end = std::find_if(tape.data().rbegin(), tape.data().rend(), [](auto x) { return x != 0; }).base();
-    if (tape.data().begin() + tape.head() + tape.offset() >= end)
-        end = tape.data().begin() + tape.head() + tape.offset() + 1;
-    for (auto it = start; it != end; ++it)
-    {
-        if (it == tape.data().begin() + tape.head() + tape.offset())
-        {
-            if (c > 0)
-                s += toStringRLE(curr, c);
-            curr = (symbol_type)-1;
-            c = 0;
-            s += headPrefix;
-            s += (char)('0' + *tape);
-            s += headSuffix;
-            s += ' ';
-        }
-        else if (*it == curr)
-            ++c;
-        else
-        {
-            if (c > 0)
-                s += toStringRLE(curr, c);
-            curr = *it;
-            c = 1;
-        }
-    }
-    if (c > 0)
-        s += toStringRLE(curr, c);
-    return s;
+    ostringstream ss;
+    ss << setw(width / 2) << str1(tape.getSegment(tape.leftEdge(), tape.head() - 1).data) << headPrefix
+       << (*tape == 0 ? ' ' : (char)(*tape + '0')) << headSuffix << setw(width / 2) << left
+       << str1(tape.getSegment(tape.head() + 1, tape.rightEdge()).data);
+    return std::move(ss).str();
 }
 
 inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, symbol_type symbolToAnalyze,
@@ -162,9 +101,7 @@ inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, s
                 //     print = false;
                 int mIndex = tMap[key];
                 ts.push_back(mIndex + 1);
-                auto x = m.head() - tape.head();
-                ss << getFgStyle(mIndex) << setw(4) << "T" + to_string(mIndex + 1) << ansi::reset << " = [" << key
-                   << "] (" << (x < 0 ? '-' : '+') << abs(x) << ")";
+                ss << getFgStyle(mIndex) << setw(4) << "T" + to_string(mIndex + 1) << ansi::reset << " = " << key;
                 // print = mIndex == 3;
             }
             if (print)

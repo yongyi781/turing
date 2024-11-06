@@ -144,7 +144,7 @@ inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, s
     return ts;
 }
 
-auto solve(string code, state_type state, state_type symbol, size_t steps)
+auto run(string code, state_type state, state_type symbol, size_t steps)
 {
     // return str01(it::wrap(string{"1011101101011010110101101011010101"}).map fun(x, (state_type)(x - '0')).to());
     auto res = analyze(std::move(code), state, symbol, steps);
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
     if (argc > 1)
     {
         if (argc == 2 && strlen(args[1]) > 2)
-            steps = stoull(args[1]);
+            steps = parseNumber(args[1]);
         else
         {
             state = toupper(args[1][0]) - 'A';
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
         }
     }
     if (argc > 2)
-        steps = stoull(args[2]);
+        steps = parseNumber(args[2]);
     ios::sync_with_stdio(false);
-    printTiming(solve, std::move(code), state, symbol, steps);
+    printTiming(run, std::move(code), state, symbol, steps);
 }

@@ -117,37 +117,70 @@ inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, s
 
 inline turing::TuringMachine bb622() { return {"1RB0RF_1RC0LD_1LB1RC_---0LE_1RA1LE_---0RC"}; }
 
-auto solve(string code, state_type state, state_type symbol, size_t steps)
+auto run(turing_rule rule, state_type stateFilter, state_type symbolFilter, size_t steps, size_t width)
 {
-    auto res = analyze(std::move(code), state, symbol, steps);
+    auto res = analyze(rule, stateFilter, symbolFilter, steps, width);
     return it::wrap(res).map fun(x, (char)(x >= 10 ? 'A' + x - 10 : '0' + x)).to<string>();
 }
 
 int main(int argc, char *argv[])
 {
+    constexpr string_view help = R"(Turing machine macro transition analyzer
+
+Usage: ./run analyze <TM>
+
+Arguments:
+  <TM>  The Turing machine.
+
+Options:
+  -h, --help                Show this help message
+  -f, --filter <filter>     The state and/or symbol to filter on, e.g. A, A0, B, B1 (default: A)
+  -n, --num-steps <number>  Maximum number of steps (default: 1000)
+  -w, --width <number>      Print width of tape output (default: 60)
+)";
     span args(argv, argc);
-    if (argc == 1 || (argc > 1 && ranges::count(string{args[1]}, '_') == 0))
+    turing_rule rule;
+    state_type stateFilter = 0;
+    symbol_type symbolFilter = -1;
+    size_t numSteps = 1000;
+    size_t width = 40;
+    for (int i = 1; i < argc; ++i)
     {
-        cout << "Usage: analyze <code> [state[symbol]] [steps]\n";
-        return 0;
-    }
-    string code = args[1];
-    state_type state = 0;
-    symbol_type symbol = -1;
-    Int steps = 1000;
-    if (argc > 2)
-    {
-        if (argc == 3 && strlen(args[2]) > 2)
-            steps = stoull(args[2]);
+        if (strcmp(args[i], "-h") == 0 || strcmp(args[i], "--help") == 0)
+        {
+            cout << help;
+            return 0;
+        }
+        if (strcmp(args[i], "-f") == 0 || strcmp(args[i], "--filter") == 0)
+        {
+            stateFilter = toupper(args[++i][0]) - 'A';
+            if (strlen(args[i]) > 1)
+                symbolFilter = toupper(args[i][1]) - '0';
+        }
+        else if (strcmp(args[i], "-n") == 0 || strcmp(args[i], "--num-steps") == 0)
+            numSteps = parseNumber(args[++i]);
+        else if (strcmp(args[i], "-w") == 0 || strcmp(args[i], "--width") == 0)
+            width = parseNumber(args[++i]);
+        else if (rule.empty())
+        {
+            rule = turing_rule(args[i]);
+            if (rule.empty())
+            {
+                cerr << ansi::red << "Invalid TM: " << ansi::reset << args[i] << '\n' << help;
+                return 0;
+            }
+        }
         else
         {
-            state = toupper(args[2][0]) - 'A';
-            if (strlen(args[2]) > 1)
-                symbol = toupper(args[2][1]) - '0';
+            cerr << ansi::red << "Unexpected argument: " << ansi::reset << args[i] << '\n' << help;
+            return 0;
         }
     }
-    if (argc > 3)
-        steps = stoull(args[3]);
+    if (rule.empty())
+    {
+        cout << help;
+        return 0;
+    }
     ios::sync_with_stdio(false);
-    printTiming(solve, std::move(code), state, symbol, steps);
+    printTiming(run, rule, stateFilter, symbolFilter, numSteps, width);
 }

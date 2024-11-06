@@ -23,7 +23,7 @@ double interpolateTapeSize(TuringMachine m, size_t steps)
     return (double)tapeSize + (double)(steps - stepsBefore) / (stepsAfter - stepsBefore);
 }
 
-auto solve(size_t steps)
+auto run(size_t steps)
 {
     ofstream fout("out/out.txt");
     fout << fixed << setprecision(10);
@@ -48,8 +48,9 @@ Options:
   -h, --help  Show this help message
 
 Comments:
-  The input is a list of Turing machines in data/in.txt. This file will write
-  the list of tape sizes to standard out as well as to out/out.txt.
+  The program reads a list of Turing machines from data/in.txt and outputs the
+  corresponding list of tape sizes to both the console (Standard Output) and a
+  file named out/out.txt.
 )";
     span args(argv, argc);
     size_t steps = 0;
@@ -61,12 +62,12 @@ Comments:
             return 0;
         }
         if (steps == 0)
-            steps = stoull(args[i]);
+            steps = parseNumber(args[i]);
     }
     if (steps == 0)
     {
         cout << help;
         return 0;
     }
-    printTiming(solve, steps);
+    printTiming(run, steps);
 }

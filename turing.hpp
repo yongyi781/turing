@@ -96,6 +96,7 @@ class turing_rule
     constexpr void numStates(size_t n) { _nStates = n; }
     [[nodiscard]] constexpr size_t numSymbols() const { return _nSymbols; }
     constexpr void numSymbols(size_t n) { _nSymbols = n; }
+    [[nodiscard]] constexpr bool empty() const { return _nStates == 0 || _nSymbols == 0; }
     [[nodiscard]] constexpr bool filled() const
     {
         for (size_t i = 0; i < numStates(); ++i)
@@ -486,6 +487,12 @@ inline bool spansEqual(const Tape &t1, const Tape &t2, int64_t start, int64_t en
         if (t1[t1.head() + i] != t2[t2.head() + i])
             return false;
     return true;
+}
+
+/// Parses a number, handling input like 1e8 correctly.
+inline size_t parseNumber(const std::string &s)
+{
+    return s.contains('e') || s.contains('E') ? std::stod(s) : std::stoll(s);
 }
 
 /// Hash

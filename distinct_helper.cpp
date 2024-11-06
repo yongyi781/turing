@@ -4,7 +4,7 @@
 using namespace std;
 using namespace turing;
 
-auto solve()
+auto run()
 {
     ofstream fout("out/out.txt");
     fout << fixed << setprecision(10);
@@ -26,4 +26,4 @@ auto solve()
     });
 }
 
-int main() { printTiming(solve); }
+int main() { printTiming(run); }

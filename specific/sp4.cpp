@@ -130,20 +130,20 @@ inline vector<int> analyze(turing::TuringMachine m, size_t maxSteps, auto filter
     return ts;
 }
 
-auto solve(string code, size_t steps)
+auto run(turing_rule rule, size_t steps)
 {
     constexpr auto filter = [](const Tape &t) { return t.state() <= 0 && *t == 0; };
-    auto res = analyze(std::move(code), steps, filter);
+    auto res = analyze(rule, steps, filter);
     return it::wrap(res).map fun(x, (char)(x >= 36 ? 'a' + x - 36 : x >= 10 ? 'A' + x - 10 : '0' + x)).to<string>();
 }
 
 int main(int argc, char *argv[])
 {
     span args(argv, argc);
-    string code = "1RB0LA_1LC0RD_0LC1LA_0RB1RD";
+    turing_rule rule{"1RB0LA_1LC0RD_0LC1LA_0RB1RD"};
     Int steps = 2000;
     if (argc > 1)
-        steps = stoull(args[1]);
+        steps = parseNumber(args[1]);
     ios::sync_with_stdio(false);
-    printTiming(solve, std::move(code), steps);
+    printTiming(run, rule, steps);
 }

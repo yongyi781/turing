@@ -24,7 +24,7 @@ string formatDelta(size_t a, size_t b)
     return std::move(ss).str();
 }
 
-auto solve(turing_rule rule, int growDir, state_type state, size_t numSteps, size_t diffLowerBound)
+auto run(turing_rule rule, int growDir, state_type state, size_t numSteps, size_t diffLowerBound)
 {
     TuringMachine m{rule};
     vector<size_t> lSteps{0};
@@ -81,10 +81,10 @@ int main(int argc, char *argv[])
 {
     constexpr string_view help = R"(Tape growth tool
 
-Usage: ./run tape_growth <code>
+Usage: ./run tape_growth <TM>
 
 Arguments:
-  <code>   The Turing machine.
+  <TM>  The Turing machine.
 
 Options:
   -h, --help                  Show this help message
@@ -116,15 +116,15 @@ Options:
         else if (strcmp(args[i], "-s") == 0 || strcmp(args[i], "--state") == 0)
             matchState = toupper(args[++i][0]) - 'A';
         else if (strcmp(args[i], "-n") == 0 || strcmp(args[i], "--num-steps") == 0)
-            numSteps = stoull(args[++i]);
+            numSteps = parseNumber(args[++i]);
         else if (strcmp(args[i], "-l") == 0 || strcmp(args[i], "--lower-bound") == 0)
-            diffLowerBound = stoull(args[++i]);
-        else if (rule.numStates() == 0)
+            diffLowerBound = parseNumber(args[++i]);
+        else if (rule.empty())
         {
             rule = turing_rule(args[i]);
-            if (rule.numStates() == 0)
+            if (rule.empty())
             {
-                cerr << ansi::red << "Invalid code: " << ansi::reset << args[i] << '\n' << help;
+                cerr << ansi::red << "Invalid TM: " << ansi::reset << args[i] << '\n' << help;
                 return 0;
             }
         }
@@ -134,10 +134,10 @@ Options:
             return 0;
         }
     }
-    if (rule.numStates() == 0)
+    if (rule.empty())
     {
         cout << help;
         return 0;
     }
-    printTiming(solve, rule, growDir, matchState, numSteps, diffLowerBound);
+    printTiming(run, rule, growDir, matchState, numSteps, diffLowerBound);
 }

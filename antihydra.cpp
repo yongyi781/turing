@@ -2,7 +2,7 @@
 
 using namespace std;
 
-auto solve()
+auto run()
 {
     mpz_int a = 8;
     int64_t b = 0;
@@ -18,5 +18,5 @@ auto solve()
 int main()
 {
     // ios::sync_with_stdio(false);
-    printTiming(solve);
+    printTiming(run);
 }

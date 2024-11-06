@@ -4,7 +4,7 @@
 using namespace std;
 using namespace turing;
 
-auto solve()
+auto run()
 {
     ofstream fout("out/out.txt");
     ofstream fout2("out/out2.txt");
@@ -32,4 +32,4 @@ auto solve()
     });
 }
 
-int main() { printTiming(solve); }
+int main() { printTiming(run); }

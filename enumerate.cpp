@@ -7,15 +7,20 @@ using namespace turing;
 
 constexpr size_t defaultMaxSteps(int nStates, int nSymbols)
 {
+    // Busy beaver numbers
     if (nSymbols == 2)
     {
-        // Busy beaver numbers
         if (nStates == 2)
             return 6;
         if (nStates == 3)
             return 21;
         if (nStates == 4)
             return 107;
+    }
+    if (nSymbols == 3)
+    {
+        if (nStates == 2)
+            return 38;
     }
     return 2000;
 }
@@ -121,7 +126,7 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
 
 string lnfRuleStr(const TuringMachine &m) { return lexicalNormalForm(m.rule()).str(); }
 
-auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
+auto run(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
 {
     auto &&[pc, msc] = getCyclerBounds(nStates, nSymbols);
     auto &&[pt, mst] = getTranslatedCyclerBounds(nStates, nSymbols);
@@ -146,14 +151,13 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
                  << " tcyclers | " << totalBouncers << " bouncers | " << totalOther << " other\n";
         // Get the short translated cyclers out of the way first.
         // m.reset();
-        auto res2 = TranslatedCyclerDetector{}.findPeriod(m, 1000, 500);
+        auto res2 = TranslatedCyclerDetector{}.findPeriodAndPreperiod(m, 1000, 500);
         if (res2.period > 0)
         {
             ++totalTCyclers;
-            // if (res2.period >= 1000 || res2.preperiod >= 1000)
-            // foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' << res2.preperiod <<
-            // '\t'
-            //       << res2.offset << '\n';
+            if (res2.period >= pt / 2 || res2.preperiod >= pt / 2)
+                foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' << res2.preperiod
+                      << '\t' << res2.offset << '\n';
             return;
         }
         auto res = CyclerDetector{}.findPeriod(m, msc, pc);
@@ -170,9 +174,9 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
         if (res2.period > 0)
         {
             ++totalTCyclers;
-            // if (res2.period >= 1000 || res2.preperiod >= 1000)
-            foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' << res2.preperiod << '\t'
-                  << res2.offset << '\n';
+            if (res2.period >= pt / 2 || res2.preperiod >= pt / 2)
+                foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' << res2.preperiod
+                      << '\t' << res2.offset << '\n';
             return;
         }
         // Test bouncer
@@ -240,7 +244,7 @@ Arguments:
 Options:
   -h, --help       Show this help message
   -m, --max-steps  The maximum number of steps to determine halting (default:
-                   BB(n - 1, k) when it is known)
+                   BB(n, k) when it is known)
   -s, --sim-steps  The number of steps to simulate enumerated machines for, for
                    purposes of classification (default: 1000000)
 
@@ -263,9 +267,9 @@ Comments:
             return 0;
         }
         if (strcmp(args[i], "-m") == 0 || strcmp(args[i], "--max-steps") == 0)
-            maxSteps = stoull(args[++i]);
+            maxSteps = parseNumber(args[++i]);
         else if (strcmp(args[i], "-s") == 0 || strcmp(args[i], "--sim-steps") == 0)
-            simSteps = stoull(args[++i]);
+            simSteps = parseNumber(args[++i]);
         else if (argPos == 0)
         {
             ++argPos;
@@ -287,5 +291,5 @@ Comments:
     if (maxSteps == std::numeric_limits<size_t>::max())
         maxSteps = defaultMaxSteps(nStates, nSymbols);
     cout << "(# states, # symbols, max steps) = " << tuple{nStates, nSymbols, maxSteps} << '\n';
-    printTiming(solve, nStates, nSymbols, maxSteps, simSteps);
+    printTiming(run, nStates, nSymbols, maxSteps, simSteps);
 }

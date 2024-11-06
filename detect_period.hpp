@@ -1,7 +1,8 @@
 #pragma once
 
-#include "turing.hpp"
 #include <euler.hpp>
+
+#include "turing.hpp"
 
 namespace turing
 {

@@ -792,34 +792,45 @@ class DebugOutput
             std::cerr << m_location << ANSI_WARN << "The number of arguments mismatch, please check unprotected comma"
                       << ANSI_RESET << '\n';
         }
-        return print_impl(exprs.begin(), types.begin(), std::forward<T>(values)...);
+        return print_impl_loop(true, exprs.begin(), types.begin(), std::forward<T>(values)...);
     }
 
   private:
-    template <typename T> T &&print_impl(const expr_t *expr, const std::string *type, T &&value)
+    template <typename T>
+    T &&print_impl(bool open_line, bool close_line, const expr_t *expr, const std::string *type, T &&value)
     {
         const T &ref = value;
         std::stringstream stream_value;
         const bool print_expr_and_type = pretty_print(stream_value, ref);
 
         std::stringstream output;
-        output << m_location;
+        if (open_line)
+            output << m_location;
         if (print_expr_and_type)
             output << ANSI_EXPRESSION << *expr << ANSI_RESET << " = ";
         output << ANSI_VALUE << stream_value.str() << ANSI_RESET;
         if (print_expr_and_type)
             output << " (" << ANSI_TYPE << *type << ANSI_RESET << ")";
-        output << '\n';
-        std::cerr << output.str();
+        if (close_line)
+            output << '\n';
+        else
+            output << ", ";
+        std::cerr << output.str() << std::flush;
 
         return std::forward<T>(value);
     }
 
-    template <typename T, typename... U>
-    auto print_impl(const expr_t *exprs, const std::string *types, T &&value, U &&...rest) -> last_t<T, U...>
+    template <typename T> T &&print_impl_loop(bool open_line, const expr_t *expr, const std::string *type, T &&value)
     {
-        print_impl(exprs, types, std::forward<T>(value));
-        return print_impl(std::next(exprs), std::next(types), std::forward<U>(rest)...);
+        return print_impl(open_line, true, expr, type, std::forward<T>(value));
+    }
+
+    template <typename T, typename... U>
+    auto print_impl_loop(bool open_line, const expr_t *exprs, const std::string *types, T &&value,
+                         U &&...rest) -> last_t<T, U...>
+    {
+        print_impl(open_line, false, exprs, types, std::forward<T>(value));
+        return print_impl_loop(false, std::next(exprs), std::next(types), std::forward<U>(rest)...);
     }
 
     std::string m_location;

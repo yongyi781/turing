@@ -79,7 +79,6 @@ bool secondDiffsConstant(std::ranges::range auto &&r)
 template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxSteps, Callback f)
 {
     auto nextIsHalt = [](const TuringMachine &m) { return m.peek().toState == -1; };
-    auto isFilled = [](const TuringMachine &m) { return ranges::all_of(m.rule(), fun(t, t.toState != -1)); };
     turing_rule r(nStates, nSymbols);
     r[0, 0] = {1, direction::right, 1};
     TuringMachine root{r};
@@ -98,7 +97,7 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
                             auto r = m.rule();
                             r[m.state(), *m.tape()] = {symbol, dir, state};
                             TuringMachine m2{std::move(r), m.tape(), m.steps()};
-                            if (!isFilled(m2))
+                            if (!m2.rule().filled())
                                 while (m2.steps() < maxSteps && !nextIsHalt(m2))
                                     m2.step();
                             if (!it::callbackResult(f, tuple{m2, max(hSymbol, symbol), max(hState, state)}))
@@ -109,18 +108,18 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
         },
         [&](auto &&t) {
             auto &&[m, hSymbol, hState] = t;
-            return m.steps() < maxSteps && !isFilled(m);
+            return m.steps() < maxSteps && !m.rule().filled();
         })([&](auto &&t) {
         auto &&[m, hSymbol, hState] = t;
         if (!nextIsHalt(m) &&
-            (isFilled(m) || (m.steps() == maxSteps && hSymbol == nSymbols - 1 && hState == nStates - 1)))
+            (m.rule().filled() || (m.steps() == maxSteps && hSymbol == nSymbols - 1 && hState == nStates - 1)))
             if (!it::callbackResult(f, m))
                 return it::result_break;
         return it::result_continue;
     });
 }
 
-string lnfRuleStr(const TuringMachine &m) { return to_string(lexicalNormalForm(m.rule())); }
+string lnfRuleStr(const TuringMachine &m) { return lexicalNormalForm(m.rule()).str(); }
 
 auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
 {
@@ -229,21 +228,64 @@ auto solve(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
 
 int main(int argc, char *argv[])
 {
+    constexpr string_view help =
+        R"(Turing machine enumeration and analysis tool
+
+Usage: ./run enumerate [n] [k]
+
+Arguments:
+  [n]  The number of states (default: 3)
+  [k]  The number of symbols (default: 2)
+
+Options:
+  -h, --help       Show this help message
+  -m, --max-steps  The maximum number of steps to determine halting (default:
+                   BB(n - 1, k) when it is known)
+  -s, --sim-steps  The number of steps to simulate enumerated machines for, for
+                   purposes of classification (default: 1000000)
+
+Comments:
+  This tool outputs to a file in the directory out/{n}x{k}. Please create this
+  directory if it does not exist before running this tool, otherwise no file
+  will be written.
+)";
     span args(argv, argc);
     int nStates = 3;
-    if (argc > 1)
-        nStates = stoi(args[1]);
     int nSymbols = 2;
-    if (argc > 2)
-        nSymbols = stoi(args[2]);
-    size_t maxSteps = defaultMaxSteps(nStates, nSymbols);
-    if (argc > 3)
-        maxSteps = stoull(args[3]);
-    size_t simulationSteps = 1000000;
-    if (argc > 4)
-        simulationSteps = stoull(args[4]);
-    nStates = std::min(nStates, 5);
+    size_t maxSteps = std::numeric_limits<size_t>::max();
+    size_t simSteps = 1000000;
+    int argPos = 0;
+    for (int i = 1; i < argc; ++i)
+    {
+        if (strcmp(args[i], "-h") == 0 || strcmp(args[i], "--help") == 0)
+        {
+            cout << help;
+            return 0;
+        }
+        if (strcmp(args[i], "-m") == 0 || strcmp(args[i], "--max-steps") == 0)
+            maxSteps = stoull(args[++i]);
+        else if (strcmp(args[i], "-s") == 0 || strcmp(args[i], "--sim-steps") == 0)
+            simSteps = stoull(args[++i]);
+        else if (argPos == 0)
+        {
+            ++argPos;
+            nStates = stoi(args[i]);
+        }
+        else if (argPos == 1)
+        {
+            ++argPos;
+            nSymbols = stoi(args[i]);
+        }
+        else
+        {
+            cerr << ansi::red << "Unexpected argument: " << ansi::reset << args[i] << '\n' << help;
+            return 0;
+        }
+    }
+    nStates = std::min(nStates, 6);
     nSymbols = std::min(nSymbols, 4);
+    if (maxSteps == std::numeric_limits<size_t>::max())
+        maxSteps = defaultMaxSteps(nStates, nSymbols);
     cout << "(# states, # symbols, max steps) = " << tuple{nStates, nSymbols, maxSteps} << '\n';
-    printTiming(solve, nStates, nSymbols, maxSteps, simulationSteps);
+    printTiming(solve, nStates, nSymbols, maxSteps, simSteps);
 }

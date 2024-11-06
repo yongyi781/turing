@@ -92,19 +92,27 @@ class turing_rule
     [[nodiscard]] constexpr transition &operator[](size_t i, size_t j) { return _data[i][j]; }
     [[nodiscard]] constexpr const transition &operator[](size_t i, size_t j) const { return _data[i][j]; }
 
-    [[nodiscard]] constexpr size_t rows() const { return _nStates; }
-    constexpr void rows(size_t n) { _nStates = n; }
-    [[nodiscard]] constexpr size_t columns() const { return _nSymbols; }
-    constexpr void columns(size_t n) { _nSymbols = n; }
+    [[nodiscard]] constexpr size_t numStates() const { return _nStates; }
+    constexpr void numStates(size_t n) { _nStates = n; }
+    [[nodiscard]] constexpr size_t numSymbols() const { return _nSymbols; }
+    constexpr void numSymbols(size_t n) { _nSymbols = n; }
+    [[nodiscard]] constexpr bool filled() const
+    {
+        for (size_t i = 0; i < numStates(); ++i)
+            for (size_t j = 0; j < numSymbols(); ++j)
+                if (_data[i][j].toState == -1)
+                    return false;
+        return true;
+    }
 
     [[nodiscard]] std::string str() const
     {
         std::string s;
-        for (size_t i = 0; i < rows(); ++i)
+        for (size_t i = 0; i < numStates(); ++i)
         {
             if (i != 0)
                 s += "_";
-            for (size_t j = 0; j < columns(); ++j)
+            for (size_t j = 0; j < numSymbols(); ++j)
             {
                 if ((*this)[i, j].toState == (state_type)-1)
                     s += "---";
@@ -351,31 +359,31 @@ class Tape
 /// Doesn't work yet, but good enough for 4x2. Precondition: all defined states are reachable.
 inline turing_rule lexicalNormalForm(const turing_rule &rule)
 {
-    if (rule.rows() <= 3) // nothing to do.
+    if (rule.numStates() <= 3) // nothing to do.
         return rule;
     // Don't worry about symbols yet
-    auto statePerm = range((state_type)0, (state_type)(rule.rows() - 1));
+    auto statePerm = range((state_type)0, (state_type)(rule.numStates() - 1));
     auto highestUsedState = rule[0, 0].toState;
-    for (state_type i = 0; i < (state_type)rule.rows(); ++i)
+    for (state_type i = 0; i < (state_type)rule.numStates(); ++i)
     {
-        for (symbol_type j = 0; j < (symbol_type)rule.columns(); ++j)
+        for (symbol_type j = 0; j < (symbol_type)rule.numSymbols(); ++j)
         {
             if (i == 0 && j == 0)
                 continue;
             auto k = rule[i, j].toState;
-            if (k < 0 || k >= (int)rule.rows())
+            if (k < 0 || k >= (int)rule.numStates())
                 continue;
             if (k > highestUsedState + 1)
                 std::swap(statePerm[k], statePerm[highestUsedState + 1]);
             highestUsedState = std::max(highestUsedState, k);
         }
     }
-    turing_rule res(rule.rows(), rule.columns());
-    for (state_type i = 0; i < (state_type)rule.rows(); ++i)
+    turing_rule res(rule.numStates(), rule.numSymbols());
+    for (state_type i = 0; i < (state_type)rule.numStates(); ++i)
     {
-        for (symbol_type j = 0; j < (symbol_type)rule.columns(); ++j)
+        for (symbol_type j = 0; j < (symbol_type)rule.numSymbols(); ++j)
         {
-            if (rule[i, j].toState < 0 || rule[i, j].toState >= (int)rule.rows())
+            if (rule[i, j].toState < 0 || rule[i, j].toState >= (int)rule.numStates())
                 continue;
             res[statePerm[i], j] = {.symbol = rule[i, j].symbol,
                                     .direction = rule[i, j].direction,
@@ -408,8 +416,8 @@ class TuringMachine
     {
     }
 
-    [[nodiscard]] constexpr size_t numStates() const { return _rule.rows(); }
-    [[nodiscard]] constexpr size_t numColors() const { return _rule.columns(); }
+    [[nodiscard]] constexpr size_t numStates() const { return _rule.numStates(); }
+    [[nodiscard]] constexpr size_t numColors() const { return _rule.numSymbols(); }
 
     [[nodiscard]] constexpr const turing_rule &rule() const { return _rule; }
     [[nodiscard]] constexpr std::string ruleStr() const { return _rule.str(); }
@@ -445,6 +453,21 @@ class TuringMachine
     {
         _tape = {};
         _steps = 0;
+    }
+
+    /// Seeks to step number n.
+    void seek(size_t n)
+    {
+        if (_steps == n)
+            return;
+        if (_steps > n)
+        {
+            std::cerr << "Generally try to avoid calling seek() backwards.\n";
+            reset();
+        }
+        while (_steps < n)
+            if (!step().success)
+                break;
     }
 
     [[nodiscard]] std::string str(size_t width = Tape::defaultPrintWidth) const { return _tape.str(width); }

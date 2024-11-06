@@ -29,8 +29,7 @@ auto solve(size_t steps)
     fout << fixed << setprecision(10);
     cout << fixed << setprecision(10);
     it::lines("data/in.txt")([&](auto &&code) {
-        TuringMachine m{code};
-        double res = interpolateTapeSize(m, steps);
+        double res = interpolateTapeSize({code}, steps);
         cout << code << " | " << res << '\n';
         fout << res << '\n' << flush;
     });
@@ -38,10 +37,36 @@ auto solve(size_t steps)
 
 int main(int argc, char *argv[])
 {
+    constexpr string_view help = R"(Calculate tape size at a given step number for a list of Turing machines
+
+Usage: ./run tape_size <n>
+
+Arguments:
+  <n>  Step number.
+
+Options:
+  -h, --help  Show this help message
+
+Comments:
+  The input is a list of Turing machines in data/in.txt. This file will write
+  the list of tape sizes to standard out as well as to out/out.txt.
+)";
     span args(argv, argc);
-    size_t steps = 1'000'000;
-    if (argc > 1)
-        steps = stoull(args[1]);
-    cout << "Running each machine for " << steps << " steps\n";
+    size_t steps = 0;
+    for (int i = 1; i < argc; ++i)
+    {
+        if (strcmp(args[i], "-h") == 0 || strcmp(args[i], "--help") == 0)
+        {
+            cout << help;
+            return 0;
+        }
+        if (steps == 0)
+            steps = stoull(args[i]);
+    }
+    if (steps == 0)
+    {
+        cout << help;
+        return 0;
+    }
     printTiming(solve, steps);
 }

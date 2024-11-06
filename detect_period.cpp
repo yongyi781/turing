@@ -44,10 +44,10 @@ Options:
             initialPeriodBound = stoull(args[++i]);
         else if (strcmp(args[i], "-n") == 0 || strcmp(args[i], "--num-steps") == 0)
             numSteps = stoull(args[++i]);
-        else if (rule.rows() == 0)
+        else if (rule.numStates() == 0)
         {
             rule = turing_rule(args[i]);
-            if (rule.rows() == 0)
+            if (rule.numStates() == 0)
             {
                 cerr << ansi::red << "Invalid code: " << ansi::reset << args[i] << '\n' << help;
                 return 0;
@@ -59,7 +59,7 @@ Options:
             return 0;
         }
     }
-    if (rule.rows() == 0)
+    if (rule.numStates() == 0)
     {
         cout << help;
         return 0;

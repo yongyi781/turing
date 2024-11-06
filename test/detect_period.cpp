@@ -39,7 +39,7 @@ void testTranslatedCycler4()
 {
     auto t1 = now();
     auto &&[p, pp, offset, _] =
-        TranslatedCyclerDetector{}.findPeriodAndPreperiod({"1RB0LC_1RD1LC_0LA1LB_1LC0RD"}, 500000000, 8000000);
+        TranslatedCyclerDetector{}.findPeriodAndPreperiod({"1RB0LC_1RD1LC_0LA1LB_1LC0RD"}, 500000000);
     println(now() - t1);
     assertEqual(p, 7129704);
     assertEqual(pp, 309086174);

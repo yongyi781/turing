@@ -2,17 +2,30 @@
 
 #include <algorithm>
 #include <deque>
-#include <euler/algorithm.hpp>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <ansi.hpp>
-#include <euler/it.hpp>
+#include <boost/container_hash/hash.hpp>
+#include <euler/algorithm.hpp>
 
 namespace turing
 {
 using symbol_type = uint8_t;
 using state_type = int8_t;
+
+// Trim from start (in place)
+inline void ltrim(std::string &s)
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](char ch) { return !std::isspace(ch); }));
+}
+
+// Trim from end (in place)
+inline void rtrim(std::string &s)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](char ch) { return !std::isspace(ch); }).base(), s.end());
+}
 
 /// Left or right.
 enum class direction : bool
@@ -35,32 +48,82 @@ class turing_rule
 {
   public:
     constexpr turing_rule(size_t nStates = 0, size_t nSymbols = 0) : _nStates(nStates), _nSymbols(nSymbols) {}
+    turing_rule(std::string code)
+    {
+        ltrim(code);
+        rtrim(code);
+        if (code.empty())
+            return;
+        std::istringstream ss(code);
+        std::string token;
+        std::vector<std::string> rows;
+        size_t i = 0;
+        for (; std::getline(ss, token, '_') && i < maxStates; ++i)
+        {
+            if (token.empty() || token.size() % 3 != 0 || (_nSymbols != 0 && token.size() / 3 != _nSymbols))
+            {
+                _nSymbols = 0;
+                return;
+            }
+            if (_nSymbols == 0)
+                _nSymbols = token.size() / 3;
+            for (size_t j = 0; j < _nSymbols; ++j)
+            {
+                auto triple = token.substr(3 * j, 3);
+                if (triple[2] == '-')
+                    _data[i][j] = transition{.symbol = 1, .direction = direction::right, .toState = -1};
+                else
+                {
+                    symbol_type symbol = triple[0] - '0';
+                    if (symbol >= _nSymbols || (triple[1] != 'L' && triple[1] != 'R'))
+                    {
+                        _nSymbols = 0;
+                        return;
+                    }
+                    _data[i][j] = transition{.symbol = (symbol_type)(triple[0] - '0'),
+                                             .direction = triple[1] == 'R' ? direction::right : direction::left,
+                                             .toState = (state_type)(triple[2] - 'A')};
+                }
+            }
+        }
+        _nStates = i;
+    }
+
+    [[nodiscard]] constexpr transition &operator[](size_t i, size_t j) { return _data[i][j]; }
+    [[nodiscard]] constexpr const transition &operator[](size_t i, size_t j) const { return _data[i][j]; }
 
     [[nodiscard]] constexpr size_t rows() const { return _nStates; }
     constexpr void rows(size_t n) { _nStates = n; }
     [[nodiscard]] constexpr size_t columns() const { return _nSymbols; }
     constexpr void columns(size_t n) { _nSymbols = n; }
 
-    [[nodiscard]] constexpr transition &operator[](size_t i, size_t j) { return _data[i][j]; }
-    [[nodiscard]] constexpr const transition &operator[](size_t i, size_t j) const { return _data[i][j]; }
+    [[nodiscard]] std::string str() const
+    {
+        std::string s;
+        for (size_t i = 0; i < rows(); ++i)
+        {
+            if (i != 0)
+                s += "_";
+            for (size_t j = 0; j < columns(); ++j)
+            {
+                if ((*this)[i, j].toState == (state_type)-1)
+                    s += "---";
+                else
+                {
+                    s += (char)('0' + (*this)[i, j].symbol);
+                    s += (*this)[i, j].direction == turing::direction::left ? 'L' : 'R';
+                    s += (char)((*this)[i, j].toState + 'A');
+                }
+            }
+        }
+        return s;
+    }
 
   private:
     std::array<std::array<transition, maxSymbols>, maxStates> _data{};
     size_t _nStates = 0;
     size_t _nSymbols = 0;
 };
-
-// Trim from start (in place)
-inline void ltrim(std::string &s)
-{
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](char ch) { return !std::isspace(ch); }));
-}
-
-// Trim from end (in place)
-inline void rtrim(std::string &s)
-{
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](char ch) { return !std::isspace(ch); }).base(), s.end());
-}
 
 /// Turing state background color, following bbchallenge.org (but a bit darker).
 inline std::string getBgStyle(state_type state)
@@ -285,29 +348,6 @@ class Tape
     }
 };
 
-/// Returns a string representation of the given Turing machine rule.
-inline std::string to_string(const turing_rule &rule)
-{
-    std::string s;
-    for (size_t i = 0; i < rule.rows(); ++i)
-    {
-        if (i != 0)
-            s += "_";
-        for (size_t j = 0; j < rule.columns(); ++j)
-        {
-            if (rule[i, j].toState == (state_type)-1)
-                s += "---";
-            else
-            {
-                s += (char)('0' + rule[i, j].symbol);
-                s += rule[i, j].direction == turing::direction::left ? 'L' : 'R';
-                s += (char)(rule[i, j].toState + 'A');
-            }
-        }
-    }
-    return s;
-}
-
 /// Doesn't work yet, but good enough for 4x2. Precondition: all defined states are reachable.
 inline turing_rule lexicalNormalForm(const turing_rule &rule)
 {
@@ -363,36 +403,16 @@ class TuringMachine
     }
 
     /// Initializes a Turing machine from a code in TNF format.
-    TuringMachine(std::string code, Tape tape = {}, size_t steps = 0) : _tape(std::move(tape)), _steps(steps)
+    TuringMachine(std::string code, Tape tape = {}, size_t steps = 0)
+        : _rule(std::move(code)), _tape(std::move(tape)), _steps(steps)
     {
-        ltrim(code);
-        rtrim(code);
-        auto v = it::split(std::move(code), '_')
-                     .map([](auto &&x) {
-                         return it::range(0, x.size() - 1, 3)
-                             .map([&](auto &&i) {
-                                 auto triple = x.substr(i, 3);
-                                 if (triple == "---")
-                                     triple = "1RZ";
-                                 return transition{.symbol = (symbol_type)(triple[0] - '0'),
-                                                   .direction = triple[1] == 'R' ? direction::right : direction::left,
-                                                   .toState = (state_type)(triple[2] - 'A')};
-                             })
-                             .to();
-                     })
-                     .to();
-        _rule.rows(v.size());
-        _rule.columns(v[0].size());
-        for (size_t i = 0; i < v.size(); ++i)
-            for (size_t j = 0; j < v[i].size(); ++j)
-                _rule[i, j] = v[i][j];
     }
 
     [[nodiscard]] constexpr size_t numStates() const { return _rule.rows(); }
     [[nodiscard]] constexpr size_t numColors() const { return _rule.columns(); }
 
     [[nodiscard]] constexpr const turing_rule &rule() const { return _rule; }
-    [[nodiscard]] constexpr std::string ruleStr() const { return to_string(_rule); }
+    [[nodiscard]] constexpr std::string ruleStr() const { return _rule.str(); }
     [[nodiscard]] constexpr const Tape &tape() const { return _tape; }
     constexpr void tape(Tape newTape) { _tape = std::move(newTape); }
     [[nodiscard]] constexpr size_t steps() const { return _steps; }

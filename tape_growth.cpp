@@ -6,8 +6,6 @@
 using namespace std;
 using namespace turing;
 
-constexpr int diffLowerBound = 2;
-
 ostream &print(const TuringMachine &m)
 {
     cout << setw(6) << m.tape().size() << " | " << setw(10) << m.steps();
@@ -26,89 +24,120 @@ string formatDelta(size_t a, size_t b)
     return std::move(ss).str();
 }
 
-auto solve(string_view code, int growDir, state_type matchState, size_t maxSteps)
+auto solve(turing_rule rule, int growDir, state_type state, size_t numSteps, size_t diffLowerBound)
 {
-    TuringMachine m{string{code}};
-    size_t million = 0;
+    TuringMachine m{rule};
     vector<size_t> lSteps{0};
     vector<size_t> rSteps{0};
     cout << fixed << setprecision(10);
     cout << "  | " << setw(13) << "initial tape" << " | ";
     print(m);
-    while (!m.halted() && m.steps() < maxSteps)
+    while (!m.halted() && m.steps() < numSteps)
     {
         auto res = m.step();
-        if (m.steps() == 1000000)
-            million = m.tape().size();
-        if (res.tapeExpanded && (matchState == -1 || m.state() == matchState))
+        if (!res.tapeExpanded || (state != -1 && m.state() != state))
+            continue;
+        // Tape grew
+        if (growDir != 1 && m.head() < 0)
         {
-            // Tape grew
-            if (growDir != 1 && m.head() < 0 && m.steps() - lSteps.back() >= diffLowerBound)
+            if (m.steps() - lSteps.back() >= diffLowerBound)
             {
                 cout << ansi::fg(204, 220, 255) << "L | ";
                 cout << setw(13) << formatDelta(lSteps.back(), m.steps()) << " | ";
                 print(m) << ansi::reset;
-                lSteps.push_back(m.steps());
             }
-            if (growDir != -1 && m.head() > 0 && m.steps() - rSteps.back() >= diffLowerBound)
+            lSteps.push_back(m.steps());
+        }
+        if (growDir != -1 && m.head() > 0)
+        {
+            if (m.steps() - rSteps.back() >= diffLowerBound)
             {
                 cout << ansi::fg(255, 204, 204) << " R| ";
                 cout << setw(13) << formatDelta(rSteps.back(), m.steps()) << " | ";
                 print(m) << ansi::reset;
-                rSteps.push_back(m.steps());
             }
+            rSteps.push_back(m.steps());
         }
     }
-    if (million > 0)
-        cout << "Tape size at 1000000 steps: " << million << '\n';
-    cout << "Tape size at " << m.steps() << " steps: " << m.tape().size() << '\n';
-    ofstream fout("data/tape_growth.txt", ios::app);
-    fout << "\n# " << code << " | steps = " << m.steps() << '\n';
-    if (lSteps.size() > 1)
+    if (growDir != 1)
     {
-        fout << "left = ";
-        println(lSteps, SIZE_MAX, fout);
+        cout << "Left growth sequence = ";
+        println(lSteps, 15);
     }
-    if (rSteps.size() > 1)
+    if (growDir != -1)
     {
-        fout << "right = ";
-        println(rSteps, SIZE_MAX, fout);
+        cout << "Right growth sequence = ";
+        println(rSteps, 15);
     }
-    fout << "list_plot_loglog(left, color=\"blue\", plotjoined=True) + list_plot_loglog(right, color=\"red\", "
-            "plotjoined=True)\n";
+    if (growDir == 0 && state == -1)
+    {
+        ofstream fout("out/tape_growth.log", ios::app);
+        fout << rule.str() << '\t' << m.steps() << '\t' << lSteps << '\t' << rSteps << '\n';
+    }
+    return pair{lSteps.size(), rSteps.size()};
 }
 
 int main(int argc, char *argv[])
 {
+    constexpr string_view help = R"(Tape growth tool
+
+Usage: ./run tape_growth <code>
+
+Arguments:
+  <code>   The Turing machine.
+
+Options:
+  -h, --help                  Show this help message
+  -d, --dir <L|R>             Measure left or right (default: both)
+  -s, --state <A|B|...>       Match state (default: all states)
+  -n, --num-steps <number>    Maximum number of steps (default: 1000000)
+  -l, --lower-bound <number>  Lower bound to report tape growth (default: 2)
+)";
     span args(argv, argc);
-    string code = "1RB1LC_0LA1RD_1LA0LC_0RB0RD";
+    turing_rule rule;
     int growDir = 0;
     state_type matchState = -1;
-    size_t maxSteps = 100'000'000;
-    if (argc > 1)
+    size_t numSteps = 1'000'000;
+    size_t diffLowerBound = 2;
+    for (int i = 1; i < argc; ++i)
     {
-        code = args[1];
-        if (ranges::count(code, '_') == 0)
+        if (strcmp(args[i], "-h") == 0 || strcmp(args[i], "--help") == 0)
         {
-            cout << "Usage: tape_growth <code> [growDir] [matchState] [maxSteps]\n";
+            cout << help;
+            return 0;
+        }
+        if (strcmp(args[i], "-d") == 0 || strcmp(args[i], "--dir") == 0)
+        {
+            if (strcmp(args[++i], "L") == 0)
+                growDir = -1;
+            else if (strcmp(args[i], "R") == 0)
+                growDir = 1;
+        }
+        else if (strcmp(args[i], "-s") == 0 || strcmp(args[i], "--state") == 0)
+            matchState = toupper(args[++i][0]) - 'A';
+        else if (strcmp(args[i], "-n") == 0 || strcmp(args[i], "--num-steps") == 0)
+            numSteps = stoull(args[++i]);
+        else if (strcmp(args[i], "-l") == 0 || strcmp(args[i], "--lower-bound") == 0)
+            diffLowerBound = stoull(args[++i]);
+        else if (rule.rows() == 0)
+        {
+            rule = turing_rule(args[i]);
+            if (rule.rows() == 0)
+            {
+                cerr << ansi::red << "Invalid code: " << ansi::reset << args[i] << '\n' << help;
+                return 0;
+            }
+        }
+        else
+        {
+            cerr << ansi::red << "Unexpected argument: " << ansi::reset << args[i] << '\n' << help;
             return 0;
         }
     }
-    if (argc > 2)
+    if (rule.rows() == 0)
     {
-        if (strcmp(args[2], "R") == 0)
-            growDir = 1;
-        else if (strcmp(args[2], "L") == 0)
-            growDir = -1;
+        cout << help;
+        return 0;
     }
-    if (argc > 3)
-    {
-        if (argc == 4 && strlen(args[3]) > 1)
-            maxSteps = stoull(args[3]);
-        else
-            matchState = toupper(args[3][0]) - 'A';
-    }
-    if (argc > 4)
-        maxSteps = stoull(args[4]);
-    printTiming(solve, code, growDir, matchState, maxSteps);
+    printTiming(solve, rule, growDir, matchState, numSteps, diffLowerBound);
 }

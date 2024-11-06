@@ -7,30 +7,62 @@
 
 using namespace std;
 using namespace turing;
-using Int = int64_t;
 
-auto solve(string code, Int initialPeriodBound)
+auto solve(turing_rule rule, size_t numSteps, size_t initialPeriodBound)
 {
-    auto &&[a, b, c, d] = TranslatedCyclerDetector(true).findPeriodAndPreperiod(
-        std::move(code), numeric_limits<size_t>::max(), initialPeriodBound);
-    return tuple{a, b, c};
+    auto &&res = TranslatedCyclerDetector(true).findPeriodAndPreperiod(rule, numSteps, initialPeriodBound);
+    return tuple{res.period, res.preperiod, res.offset};
 }
 
 int main(int argc, char *argv[])
 {
+    constexpr string_view help =
+        R"(Translated cycler period detection tool. Output is in the form (period, preperiod, offset).
+
+Usage: ./run detect_period <code>
+
+Arguments:
+  <code>   The Turing machine
+
+Options:
+  -h, --help       Show this help message
+  -p, --period     The initial period bound (default: 10000)
+  -n, --num-steps  The number of steps to run for (default: unbounded)
+)";
     span args(argv, argc);
-    string code = "1RB0LC_1RD1LC_0LA1LB_1LC0RD";
-    Int initialPeriodBound = 10000000;
-    if (argc > 1)
+    turing_rule rule;
+    size_t numSteps = std::numeric_limits<size_t>::max();
+    size_t initialPeriodBound = 10000;
+    for (int i = 1; i < argc; ++i)
     {
-        code = args[1];
-        if (ranges::count(code, '_') == 0)
+        if (strcmp(args[i], "-h") == 0 || strcmp(args[i], "--help") == 0)
         {
-            cout << "Usage: detect_period <code> [period bound]\n";
+            cout << help;
+            return 0;
+        }
+        if (strcmp(args[i], "-p") == 0 || strcmp(args[i], "--period") == 0)
+            initialPeriodBound = stoull(args[++i]);
+        else if (strcmp(args[i], "-n") == 0 || strcmp(args[i], "--num-steps") == 0)
+            numSteps = stoull(args[++i]);
+        else if (rule.rows() == 0)
+        {
+            rule = turing_rule(args[i]);
+            if (rule.rows() == 0)
+            {
+                cerr << ansi::red << "Invalid code: " << ansi::reset << args[i] << '\n' << help;
+                return 0;
+            }
+        }
+        else
+        {
+            cerr << ansi::red << "Unexpected argument: " << ansi::reset << args[i] << '\n' << help;
             return 0;
         }
     }
-    if (argc > 2)
-        initialPeriodBound = stoull(args[2]);
-    printTiming(solve, code, initialPeriodBound);
+    if (rule.rows() == 0)
+    {
+        cout << help;
+        return 0;
+    }
+    printTiming(solve, rule, numSteps, initialPeriodBound);
 }

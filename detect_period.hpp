@@ -49,13 +49,13 @@ inline bool isPeriodic(TuringMachine m, size_t period)
         if (isPeriodic(copy, period))
         {
             if (verbose)
-                std::cout << "Preperiod " << mid << " ✅\n";
+                std::cout << "  preperiod " << mid << " ✅\n";
             high = mid;
         }
         else
         {
             if (verbose)
-                std::cout << "Preperiod " << mid << " ❌\n";
+                std::cout << "  preperiod " << mid << " ❌\n";
             low = mid;
             m = copy;
         }
@@ -122,7 +122,7 @@ class CyclerDetector
             return {0UZ, 0UZ, 0LL, std::move(machine)};
         }
         if (self._verbose)
-            std::cout << "Preliminary: " << std::tuple{res.period, res.preperiod, res.offset} << '\n';
+            std::cout << "period = " << res.period << ", offset = " << res.offset << '\n';
         auto &m = res.lastMachine;
         if (self._verbose)
             std::cout << "Performing binary search with low = " << m.steps() << " and high = " << res.preperiod << '\n';
@@ -148,6 +148,7 @@ class TranslatedCyclerDetector : public CyclerDetector
     find_period_result findPeriod(TuringMachine machine, size_t maxSteps, size_t startPeriodBound = 1000) const
     {
         size_t periodBound = startPeriodBound;
+        size_t prevPeriodBound = 0;
         TuringMachine prev2 = machine;
         maxSteps += machine.steps();
         while (machine.steps() <= maxSteps)
@@ -196,12 +197,14 @@ class TranslatedCyclerDetector : public CyclerDetector
                         if (verbose())
                             std::cout << ansi::green << ansi::bold << "[found] " << ansi::reset << machine.steps()
                                       << " | " << machine.prettyStr() << '\n';
+                        // i = period.
                         TuringMachine lastMachine =
-                            i <= startPeriodBound ? std::move(prev2) : TuringMachine{machine.rule()};
+                            prevPeriodBound >= i ? std::move(prev2) : TuringMachine{machine.rule()};
                         return {i, machine.steps() - i, machine.head() - prev.head(), std::move(lastMachine)};
                     }
                 }
             }
+            prevPeriodBound = periodBound;
             periodBound = std::max(periodBound + 1, (size_t)(periodBound * periodGrowthRatio));
             prev2 = prev;
         }

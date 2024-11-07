@@ -1,6 +1,6 @@
 #include "pch.hpp"
 
-#include "detect_period.hpp"
+#include "decide/tcycler.hpp"
 
 using namespace std;
 using namespace turing;
@@ -151,7 +151,7 @@ auto run(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
                  << " tcyclers | " << totalBouncers << " bouncers | " << totalOther << " other\n";
         // Get the short translated cyclers out of the way first.
         // m.reset();
-        auto res2 = TranslatedCyclerDetector{}.findPeriodAndPreperiod(m, 1000, 500);
+        auto res2 = TranslatedCyclerDecider{}.findPeriodAndPreperiod(m, 1000, 500);
         if (res2.period > 0)
         {
             ++totalTCyclers;
@@ -160,7 +160,7 @@ auto run(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
                       << '\t' << res2.offset << '\n';
             return;
         }
-        auto res = CyclerDetector{}.findPeriod(m, msc, pc);
+        auto res = CyclerDecider{}.findPeriod(m, msc, pc);
         if (res.period > 0)
         {
             ++totalCyclers;
@@ -170,7 +170,7 @@ auto run(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
             return;
         }
         m.reset();
-        res2 = TranslatedCyclerDetector{}.findPeriodAndPreperiod(m, mst, pt);
+        res2 = TranslatedCyclerDecider{}.findPeriodAndPreperiod(m, mst, pt);
         if (res2.period > 0)
         {
             ++totalTCyclers;

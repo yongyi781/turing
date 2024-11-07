@@ -24,7 +24,7 @@ string formatDelta(size_t a, size_t b)
     return std::move(ss).str();
 }
 
-auto run(turing_rule rule, int growDir, state_type state, size_t numSteps, size_t diffLowerBound)
+auto run(turing_rule rule, int growDir, state_type state, size_t numSteps, bool allDeltas)
 {
     TuringMachine m{rule};
     vector<size_t> lSteps{0};
@@ -38,24 +38,20 @@ auto run(turing_rule rule, int growDir, state_type state, size_t numSteps, size_
         if (!res.tapeExpanded || (state != -1 && m.state() != state))
             continue;
         // Tape grew
-        if (growDir != 1 && m.head() < 0)
+        if (growDir != 1 && m.head() < 0 &&
+            (allDeltas || lSteps.size() <= 1 || m.steps() - lSteps.back() > lSteps.back() - lSteps[lSteps.size() - 2]))
         {
-            if (m.steps() - lSteps.back() >= diffLowerBound)
-            {
-                cout << ansi::fg(204, 220, 255) << "L | ";
-                cout << setw(13) << formatDelta(lSteps.back(), m.steps()) << " | ";
-                print(m) << ansi::reset;
-            }
+            cout << ansi::fg(204, 220, 255) << "L | ";
+            cout << setw(13) << formatDelta(lSteps.back(), m.steps()) << " | ";
+            print(m) << ansi::reset;
             lSteps.push_back(m.steps());
         }
-        if (growDir != -1 && m.head() > 0)
+        if (growDir != -1 && m.head() > 0 &&
+            (allDeltas || rSteps.size() <= 1 || m.steps() - rSteps.back() > rSteps.back() - rSteps[rSteps.size() - 2]))
         {
-            if (m.steps() - rSteps.back() >= diffLowerBound)
-            {
-                cout << ansi::fg(255, 204, 204) << " R| ";
-                cout << setw(13) << formatDelta(rSteps.back(), m.steps()) << " | ";
-                print(m) << ansi::reset;
-            }
+            cout << ansi::fg(255, 204, 204) << " R| ";
+            cout << setw(13) << formatDelta(rSteps.back(), m.steps()) << " | ";
+            print(m) << ansi::reset;
             rSteps.push_back(m.steps());
         }
     }
@@ -88,17 +84,17 @@ Arguments:
 
 Options:
   -h, --help                  Show this help message
+  -a, --all                   Show all deltas, not just increasing deltas.
   -d, --dir <L|R>             Measure left or right (default: both)
   -s, --state <A|B|...>       Match state (default: all states)
   -n, --num-steps <number>    Maximum number of steps (default: 1000000)
-  -l, --lower-bound <number>  Lower bound to report tape growth (default: 2)
 )";
     span args(argv, argc);
     turing_rule rule;
     int growDir = 0;
     state_type matchState = -1;
     size_t numSteps = 1'000'000;
-    size_t diffLowerBound = 2;
+    bool allDeltas = false;
     for (int i = 1; i < argc; ++i)
     {
         if (strcmp(args[i], "-h") == 0 || strcmp(args[i], "--help") == 0)
@@ -106,7 +102,9 @@ Options:
             cout << help;
             return 0;
         }
-        if (strcmp(args[i], "-d") == 0 || strcmp(args[i], "--dir") == 0)
+        if (strcmp(args[i], "-a") == 0 || strcmp(args[i], "--all") == 0)
+            allDeltas = true;
+        else if (strcmp(args[i], "-d") == 0 || strcmp(args[i], "--dir") == 0)
         {
             if (strcmp(args[++i], "L") == 0)
                 growDir = -1;
@@ -117,8 +115,6 @@ Options:
             matchState = toupper(args[++i][0]) - 'A';
         else if (strcmp(args[i], "-n") == 0 || strcmp(args[i], "--num-steps") == 0)
             numSteps = parseNumber(args[++i]);
-        else if (strcmp(args[i], "-l") == 0 || strcmp(args[i], "--lower-bound") == 0)
-            diffLowerBound = parseNumber(args[++i]);
         else if (rule.empty())
         {
             rule = turing_rule(args[i]);
@@ -139,5 +135,5 @@ Options:
         cout << help;
         return 0;
     }
-    printTiming(run, rule, growDir, matchState, numSteps, diffLowerBound);
+    printTiming(run, rule, growDir, matchState, numSteps, allDeltas);
 }

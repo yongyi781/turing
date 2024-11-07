@@ -1,8 +1,6 @@
 #pragma once
 
-#include <euler.hpp>
-
-#include "turing.hpp"
+#include "../turing.hpp"
 
 namespace turing
 {
@@ -73,10 +71,10 @@ struct find_period_result
     TuringMachine lastMachine;
 };
 
-class CyclerDetector
+class CyclerDecider
 {
   public:
-    constexpr CyclerDetector(bool verbose = false) : _verbose(verbose) {}
+    constexpr CyclerDecider(bool verbose = false) : _verbose(verbose) {}
 
     [[nodiscard]] constexpr bool verbose() const { return _verbose; }
 
@@ -138,10 +136,10 @@ class CyclerDetector
 };
 
 /// Detects translated cyclers. This will not catch cyclers.
-class TranslatedCyclerDetector : public CyclerDetector
+class TranslatedCyclerDecider : public CyclerDecider
 {
   public:
-    constexpr TranslatedCyclerDetector(bool verbose = false) : CyclerDetector(verbose) {}
+    constexpr TranslatedCyclerDecider(bool verbose = false) : CyclerDecider(verbose) {}
 
     /// Finds a period for the given Turing machine rule code with the given period bound. The returned preperiod is
     /// only an upper bound.

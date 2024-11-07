@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     constexpr string_view help =
         R"(Translated cycler period detection tool. Output is in the form (period, preperiod, offset).
 
-Usage: ./run detect_period <TM>
+Usage: ./run decide/tcycler <TM>
 
 Arguments:
   <TM>  The Turing machine

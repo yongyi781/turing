@@ -21,6 +21,13 @@ if ($content -match "// stack size: (\d+)") {
 }
 $sanitize = $content -match "// sanitize"
 $outputFile = Join-Path $mode ($File -replace "\.cpp$", ".exe")
+$directory = Split-Path -Path $outputFile
+# Check if directory exists, if not, create it
+if (!(Test-Path -Path $directory)) {
+    Write-Host "Creating directory $directory"
+    New-Item -ItemType Directory -Path $directory | Out-Null
+}
+
 $clangArgs = $(
     "-fcolor-diagnostics",
     "-fno-caret-diagnostics",

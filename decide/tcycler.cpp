@@ -1,9 +1,9 @@
 // Utility to detect a translated cycler efficiently. This won't detect in-place cyclers but those are easily detected
 // by spotting that the tape size becomes eventually constant.
 
-#include "pch.hpp"
+#include "../pch.hpp"
 
-#include "detect_period.hpp"
+#include "../detect_period.hpp"
 
 using namespace std;
 using namespace turing;

@@ -70,5 +70,6 @@ Options:
         cout << help;
         return 0;
     }
-    run(rule, numSteps);
+    ios::sync_with_stdio(false);
+    printTiming(run, rule, numSteps);
 }

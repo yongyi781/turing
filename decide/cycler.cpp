@@ -10,19 +10,19 @@ using namespace turing;
 
 void run(turing_rule rule, size_t numSteps, size_t initialPeriodBound, bool verbose)
 {
-    auto &&res = TranslatedCyclerDecider(verbose).find(rule, numSteps, initialPeriodBound);
+    auto &&res = CyclerDecider(verbose).find(rule, numSteps, initialPeriodBound);
     if (res.period == 0)
         cout << "No period found\n";
     else
-        cout << "(period, preperiod, offset) = " << tuple{res.period, res.preperiod, res.offset} << '\n';
+        cout << "(period, preperiod) = " << tuple{res.period, res.preperiod} << '\n';
 }
 
 int main(int argc, char *argv[])
 {
     constexpr string_view help =
-        R"(Translated cycler decider. Output is in the form (period, preperiod, offset).
+        R"(Cycler decider. Output is in the form (period, preperiod).
 
-Usage: ./run decide/tcycler <TM>
+Usage: ./run decide/cycler <TM>
 
 Arguments:
   <TM>  The Turing machine

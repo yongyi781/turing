@@ -14,7 +14,10 @@ double interpolateTapeSize(TuringMachine m, size_t steps)
     size_t tapeSize = m.tape().size();
     while (true)
     {
-        if (m.step().tapeExpanded)
+        auto res = m.step();
+        if (!res.success)
+            return 0;
+        if (res.tapeExpanded)
         {
             stepsAfter = m.steps();
             break;
@@ -69,5 +72,6 @@ Comments:
         cout << help;
         return 0;
     }
+    ios::sync_with_stdio(false);
     printTiming(run, steps);
 }

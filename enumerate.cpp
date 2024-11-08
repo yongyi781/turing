@@ -1,5 +1,6 @@
 #include "pch.hpp"
 
+#include "decide/bouncer.hpp"
 #include "decide/tcycler.hpp"
 
 using namespace std;
@@ -30,55 +31,50 @@ constexpr pair<size_t, size_t> getCyclerBounds(int nStates, int nSymbols)
     if (nSymbols == 2)
     {
         if (nStates == 2)
-            return pair{4, 8};
+            return pair{2, 8};
         if (nStates == 3)
-            return pair{18, 36};
+            return pair{18, 40};
         if (nStates == 4)
             return pair{120, 360};
     }
-    return pair{500, 1500};
+    return pair{240, 10000};
 }
 
-constexpr pair<size_t, size_t> getTranslatedCyclerBounds(int nStates, int nSymbols)
+constexpr pair<size_t, size_t> getTCBounds(int nStates, int nSymbols)
 {
     if (nSymbols == 2)
     {
         if (nStates == 2)
-            return pair{9, 18};
+            return pair{6, 18};
         if (nStates == 3)
-            return pair{92, 184};
+            return pair{92, 200};
         if (nStates == 4)
-            return pair{1200, 2400};
+            return pair{1000000, 2500000};
     }
-    return pair{10000, 30000};
+    return pair{10000, 25000};
 }
 
-auto growthProfile(TuringMachine m, size_t maxSteps)
+constexpr size_t interestingTCCutoff(int nStates, int nSymbols)
 {
-    maxSteps += m.steps();
-    vector<size_t> l{0};
-    vector<size_t> r{0};
-    while (!m.halted() && m.steps() < maxSteps)
+    if (nSymbols == 2)
     {
-        if (m.step().tapeExpanded)
-        {
-            if (m.head() < 0)
-                l.push_back(m.steps());
-            else
-                r.push_back(m.steps());
-        }
+        if (nStates == 2)
+            return 0;
+        if (nStates == 3)
+            return 23;
+        if (nStates == 4)
+            return 1000;
+        if (nStates == 5)
+            return 5000;
     }
-    return pair{l, r};
-}
-
-bool secondDiffsConstant(std::ranges::range auto &&r)
-{
-    if (r.size() <= 3)
-        return false;
-    for (auto it = r.begin() + 3; it < r.end(); ++it)
-        if (*it - 3 * *(it - 1) + 3 * *(it - 2) - *(it - 3) != 0)
-            return false;
-    return true;
+    if (nSymbols == 3)
+    {
+        if (nStates == 2)
+            return 0;
+        if (nStates == 3)
+            return 1000;
+    }
+    return 5000;
 }
 
 template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxSteps, Callback f)
@@ -124,110 +120,137 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
     });
 }
 
-string lnfRuleStr(const TuringMachine &m) { return lexicalNormalForm(m.rule()).str(); }
-
-auto run(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
+struct enumerate_info
 {
-    auto &&[pc, msc] = getCyclerBounds(nStates, nSymbols);
-    auto &&[pt, mst] = getTranslatedCyclerBounds(nStates, nSymbols);
-    size_t totalCyclers = 0;
-    size_t totalTCyclers = 0;
-    size_t totalCounters = 0;
-    size_t totalBouncers = 0;
-    size_t totalOther = 0;
+    ofstream fout;
+    size_t count = 0;
+};
+
+void run(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
+{
+    auto &&[cyclerPBound, cyclerSBound] = getCyclerBounds(nStates, nSymbols);
+    auto &&[tcPBound, tcSBound] = getTCBounds(nStates, nSymbols);
+    size_t tcCutoff = interestingTCCutoff(nStates, nSymbols);
+
+    vector<string> names{"cyclers", "tcyclers", "bouncers", "cubic bells", "quartic bells", "counters", "unclassified"};
+    boost::unordered_flat_map<string, enumerate_info> data;
     size_t total = 0;
     string directory = "out/";
     directory += to_string(nStates) + "x" + to_string(nSymbols) + "/";
-    // ofstream foutc(directory + "cyclers.txt");
-    ofstream foutc(directory + "counters.txt");
-    ofstream foutt(directory + "tcyclers.txt");
-    ofstream foutb(directory + "bouncers.txt");
-    ofstream foutu(directory + "unclassified.txt");
-    foutu << fixed << setprecision(6);
+    for (auto &&name : names)
+        data[name].fout.open(directory + name + ".txt");
+    data["unclassified"].fout << fixed << setprecision(6);
+
+    auto printCounts = [&]() {
+        cout << total << " total";
+        for (auto &&name : names)
+            cout << " | " << data[name].count << ' ' << name;
+        cout << '\n';
+    };
+
+    auto tc = [&](TuringMachine &m, size_t maxSteps, size_t startPeriodBound) {
+        m.reset();
+        auto res = TranslatedCyclerDecider{}.find(m, maxSteps, startPeriodBound);
+        if (res.period > 0)
+        {
+            ++data["tcyclers"].count;
+            if (res.period >= tcCutoff || res.preperiod >= tcCutoff)
+                data["tcyclers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                      << res.period << '\t' << res.preperiod << '\t' << res.offset << '\n';
+            return true;
+        }
+        return false;
+    };
+
     enumTMs(nStates, nSymbols, maxSteps, [&](auto m) {
         ++total;
         if (total % 10'000 == 0)
-            cout << "So far: " << total << " total | " << totalCyclers << " cyclers | " << totalTCyclers
-                 << " tcyclers | " << totalBouncers << " bouncers | " << totalOther << " other\n";
+        {
+            cout << "So far: ";
+            printCounts();
+        }
         // Get the short translated cyclers out of the way first.
-        // m.reset();
-        auto res2 = TranslatedCyclerDecider{}.findPeriodAndPreperiod(m, 1000, 500);
-        if (res2.period > 0)
-        {
-            ++totalTCyclers;
-            if (res2.period >= pt / 2 || res2.preperiod >= pt / 2)
-                foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' << res2.preperiod
-                      << '\t' << res2.offset << '\n';
-            return;
-        }
-        auto res = CyclerDecider{}.findPeriod(m, msc, pc);
-        if (res.period > 0)
-        {
-            ++totalCyclers;
-            // if (res.preperiod >= 100 || res.period >= 100)
-            // foutc << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res.period << '\t' <<
-            // res.preperiod << '\n';
-            return;
-        }
         m.reset();
-        res2 = TranslatedCyclerDecider{}.findPeriodAndPreperiod(m, mst, pt);
-        if (res2.period > 0)
+        if (tc(m, 50, 10))
+            return;
+        // Test cyclers.
+        m.reset();
+        auto resC = CyclerDecider{}.find(m, cyclerSBound, cyclerPBound);
+        if (resC.period > 0)
         {
-            ++totalTCyclers;
-            if (res2.period >= pt / 2 || res2.preperiod >= pt / 2)
-                foutt << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res2.period << '\t' << res2.preperiod
-                      << '\t' << res2.offset << '\n';
+            ++data["cyclers"].count;
+            if (resC.preperiod >= tcCutoff || resC.period >= tcCutoff)
+                data["cyclers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                     << resC.period << '\t' << resC.preperiod << '\n';
             return;
         }
-        // Test bouncer
-        // for (size_t i = 0; i < 10000; ++i)
-        //     m.step();
-        // auto &&[l, r] = bounceProfile(m, 10000);
-        // if ((secondDiffsConstant(l)) || (secondDiffsConstant(r)))
-        // {
-        //     ++totalBouncers;
-        //     foutb << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << res.period << '\t' <<
-        //     res.preperiod << '\n'; return;
-        // }
-        if (simulationSteps > 0)
+        // Test slightly longer translated cyclers now.
+        m.reset();
+        if (tc(m, 5000, 2000))
+            return;
+        // Test bouncer/bell
+        m.reset();
+        auto resB = BouncerDecider{}.find(m, 4, 25000, 512);
+        if (resB.found)
         {
-            TuringMachine m2{m.rule()};
-            size_t i = 0;
-            for (; i < simulationSteps / 10; ++i)
-                m2.step();
-            auto size1 = m2.tape().size();
-            for (; i < simulationSteps; ++i)
-                m2.step();
-            auto size2 = m2.tape().size();
-            auto r = (double)size2 / size1;
-            if (r < 1.6)
+            if (resB.degree == 1)
             {
-                ++totalCounters;
-                foutc << setw(9) << r << '\t' << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << size1 << '\t'
-                      << size2 << '\n';
+                ++data["tcyclers"].count;
+                data["tcyclers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t' << "?"
+                                      << '\t' << resB.start << '\t' << resB.xPeriod << '\n';
             }
-            else if (abs(r - sqrt(10)) < 0.01)
+            else if (resB.degree == 2)
             {
-                ++totalBouncers;
-                foutb << setw(9) << r << '\t' << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << size1 << '\t'
-                      << size2 << '\n';
+                ++data["bouncers"].count;
+                if (nStates == 3 || resB.start >= 1000 || resB.xPeriod >= 10)
+                    data["bouncers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                          << resB.start << '\t' << resB.xPeriod << '\n';
+            }
+            else if (resB.degree == 3)
+            {
+                ++data["cubic bells"].count;
+                if (nStates == 4 || resB.start >= 1000 || resB.xPeriod >= 10)
+                    data["cubic bells"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                             << resB.start << '\t' << resB.xPeriod << '\n';
             }
             else
             {
-                ++totalOther;
-                foutu << setw(9) << r << '\t' << setw(8) << total << '\t' << lnfRuleStr(m) << '\t' << size1 << '\t'
-                      << size2 << '\n';
+                ++data["quartic bells"].count;
+                data["quartic bells"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                           << resB.degree << '\t' << resB.start << '\t' << resB.xPeriod << '\n';
+            }
+            return;
+        }
+        // Test counter
+        if (simulationSteps > 0)
+        {
+            m.reset();
+            size_t tapeSizeBound = 25 * log10(simulationSteps);
+            for (size_t i = 0; i < simulationSteps; ++i)
+            {
+                m.step();
+                if (m.tape().size() > tapeSizeBound)
+                    break;
+            }
+            if (m.tape().size() <= tapeSizeBound)
+            {
+                ++data["counters"].count;
+                data["counters"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                      << m.tape().size() << '\n';
+                return;
             }
         }
-        else
-        {
-            ++totalOther;
-            foutu << setw(8) << total << '\t' << lnfRuleStr(m) << '\n';
-        }
+
+        // Run powerful tcycler detector...
+        m.reset();
+        if (tc(m, tcSBound, tcPBound))
+            return;
+
+        ++data["unclassified"].count;
+        data["unclassified"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\n';
     });
-    cout << "Total: " << total << " total | " << totalCyclers << " cyclers | " << totalTCyclers << " tcyclers | "
-         << totalCounters << " counters | " << totalBouncers << " bouncers | " << totalOther << " other\n";
-    return tuple{total, totalCyclers, totalTCyclers, totalBouncers, totalOther};
+    cout << "Final count: ";
+    printCounts();
 }
 
 int main(int argc, char *argv[])
@@ -257,7 +280,7 @@ Comments:
     int nStates = 3;
     int nSymbols = 2;
     size_t maxSteps = std::numeric_limits<size_t>::max();
-    size_t simSteps = 1000000;
+    size_t simSteps = 100000;
     int argPos = 0;
     for (int i = 1; i < argc; ++i)
     {

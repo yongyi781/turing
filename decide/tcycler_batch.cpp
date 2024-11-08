@@ -19,7 +19,7 @@ auto run()
         // int n1 = stoi(v[2]);
         // int n2 = stoi(v[3]);
         const auto &code = line;
-        auto res = TranslatedCyclerDecider{}.findPeriodAndPreperiod({code}, 10000000);
+        auto res = TranslatedCyclerDecider{}.find({code}, 10000000);
         cout << res.period << '\n';
         // if (res.period > 0)
         // {

@@ -8,11 +8,11 @@
 using namespace std;
 using namespace turing;
 
-void run(turing_rule rule, size_t numSteps, size_t maxSkip, bool verbose)
+void run(turing_rule rule, size_t degree, size_t numSteps, size_t maxPeriod, size_t confidenceLevel, bool verbose)
 {
-    auto res = BouncerDecider{verbose}.find(rule, numSteps, maxSkip);
+    auto res = BouncerDecider{verbose}.find(rule, degree, numSteps, maxPeriod, confidenceLevel);
     if (res.found)
-        cout << "(startStep, skip) = " << tuple{res.startStep, res.skip} << '\n';
+        cout << "(degree, start, xPeriod) = " << tuple{res.degree, res.start, res.xPeriod} << '\n';
     else
         cout << "No bouncer found\n";
 }
@@ -20,7 +20,7 @@ void run(turing_rule rule, size_t numSteps, size_t maxSkip, bool verbose)
 int main(int argc, char *argv[])
 {
     constexpr string_view help =
-        R"(Bouncer detection tool. Currently heuristic based on tape growth, and catches bells (including transient ones) along with bouncers.
+        R"(Heuristic bouncer decider
 
 Usage: ./run decide/bouncer <TM>
 
@@ -28,16 +28,24 @@ Arguments:
   <TM>  The Turing machine
 
 Options:
-  -h, --help       Show this help message
-  -v, --verbose    Show verbose output
-  -n, --num-steps  The number of steps to run for (default: 1000000)
-  -m, --max-skip   The maximum skip number (default: 4)
+  -h, --help              Show this help message
+  -v, --verbose           Show verbose output
+  -d, --degree            The maximum degree to check for (default: 3)
+  -n, --num-steps         The number of steps to run for (default: 1e8)
+  -p, --period            The maximum x-period to check for (default: 100)
+  -c, --confidence-level  The number of extra tape growth terms to check (default: 5)
+
+Comments:
+  Currently heuristic based on tape growth, and catches bells (including transient ones)
+  along with bouncers. Can detect cubic, quartic, etc. bells as well.
 )";
     span args(argv, argc);
     turing_rule rule;
     bool verbose = false;
-    size_t numSteps = 1'000'000;
-    size_t maxSkip = 4;
+    size_t numSteps = 100'000'000;
+    size_t degree = 3;
+    size_t maxPeriod = 100;
+    size_t confidenceLevel = 5;
     for (int i = 1; i < argc; ++i)
     {
         if (strcmp(args[i], "-h") == 0 || strcmp(args[i], "--help") == 0)
@@ -47,10 +55,14 @@ Options:
         }
         if (strcmp(args[i], "-v") == 0 || strcmp(args[i], "--verbose") == 0)
             verbose = true;
+        else if (strcmp(args[i], "-d") == 0 || strcmp(args[i], "--degree") == 0)
+            degree = parseNumber(args[++i]);
         else if (strcmp(args[i], "-n") == 0 || strcmp(args[i], "--num-steps") == 0)
             numSteps = parseNumber(args[++i]);
-        else if (strcmp(args[i], "-m") == 0 || strcmp(args[i], "--max-skip") == 0)
-            maxSkip = parseNumber(args[++i]);
+        else if (strcmp(args[i], "-p") == 0 || strcmp(args[i], "--period") == 0)
+            maxPeriod = parseNumber(args[++i]);
+        else if (strcmp(args[i], "-c") == 0 || strcmp(args[i], "--confidence-level") == 0)
+            confidenceLevel = parseNumber(args[++i]);
         else if (rule.empty())
         {
             rule = turing_rule(args[i]);
@@ -71,5 +83,5 @@ Options:
         cout << help;
         return 0;
     }
-    printTiming(run, rule, numSteps, maxSkip, verbose);
+    printTiming(run, rule, degree, numSteps, maxPeriod, confidenceLevel, verbose);
 }

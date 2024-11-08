@@ -29,6 +29,8 @@ template <typename T, typename U> void assertEqual(const T &actual, const U &exp
         std::string message = "Expected ";
         if constexpr (is_string<Tp>)
             message += expected + std::string{", got "} + actual;
+        else if constexpr (std::same_as<Tp, bool>)
+            message += expected ? "true, got false" : "false, got true";
         else
             message += to_string(expected) + ", got " + to_string(actual);
         fail(message);

@@ -86,7 +86,7 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
     root.step();
     return it::tree_preorder(
         tuple{root, (symbol_type)1, (state_type)1},
-        [&](auto &&t, auto f) {
+        [&](auto &&t, auto rec) {
             auto &&[m, hSymbol, hState] = t;
             // Invariant: m's next state should be a halt state.
             if (nextIsHalt(m))
@@ -101,7 +101,8 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
                             if (!m2.rule().filled())
                                 while (m2.steps() < maxSteps && !nextIsHalt(m2))
                                     m2.step();
-                            if (!it::callbackResult(f, tuple{m2, max(hSymbol, symbol), max(hState, state)}))
+                            if (!it::callbackResult(rec,
+                                                    tuple{std::move(m2), max(hSymbol, symbol), max(hState, state)}))
                                 return it::result_break;
                         }
             }
@@ -114,7 +115,7 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
         auto &&[m, hSymbol, hState] = t;
         if (!nextIsHalt(m) &&
             (m.rule().filled() || (m.steps() == maxSteps && hSymbol == nSymbols - 1 && hState == nStates - 1)))
-            if (!it::callbackResult(f, m))
+            if (!it::callbackResult(f, std::forward<decltype(m)>(m)))
                 return it::result_break;
         return it::result_continue;
     });
@@ -126,128 +127,186 @@ struct enumerate_info
     size_t count = 0;
 };
 
+size_t total = 0;
+vector<string> names{"cyclers",       "tcyclers", "bouncers", "cubic bells", "quartic bells",
+                     "quintic bells", "bells",    "counters", "unclassified"};
+boost::unordered_flat_map<string, enumerate_info> enumData;
+// vector stats(1000, 0UZ);
+
+inline bool cycler(TuringMachine &m, size_t maxSteps, size_t startPeriodBound, size_t printCutoff)
+{
+    auto res = CyclerDecider{}.find(m, maxSteps, startPeriodBound);
+    if (res.period > 0)
+    {
+        ++enumData["cyclers"].count;
+        if (res.preperiod >= printCutoff || res.period >= printCutoff)
+            enumData["cyclers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                     << res.period << '\t' << res.preperiod << '\n';
+        return true;
+    }
+    return false;
+}
+
+inline bool cyclerFast(TuringMachine &m, size_t maxSteps, size_t startPeriodBound)
+{
+    auto res = CyclerDecider{}.findPeriodOnly(m, maxSteps, startPeriodBound);
+    if (res.period > 0)
+    {
+        ++enumData["cyclers"].count;
+        return true;
+    }
+    return false;
+}
+
+inline bool tc(TuringMachine &m, size_t maxSteps, size_t startPeriodBound, size_t printCutoff)
+{
+    auto res = TranslatedCyclerDecider{}.find(m, maxSteps, startPeriodBound);
+    if (res.period > 0)
+    {
+        ++enumData["tcyclers"].count;
+        if (res.period >= printCutoff || res.preperiod >= printCutoff)
+            enumData["tcyclers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                      << res.period << '\t' << res.preperiod << '\t' << res.offset << '\n';
+        return true;
+    }
+    return false;
+}
+
+inline bool tcFast(TuringMachine &m, size_t maxSteps, size_t startPeriodBound)
+{
+    auto res = TranslatedCyclerDecider{}.findPeriodOnly(m, maxSteps, startPeriodBound);
+    if (res.period > 0)
+    {
+        ++enumData["tcyclers"].count;
+        return true;
+    }
+    return false;
+}
+
+inline bool bouncer(TuringMachine &m, size_t degree, size_t maxSteps, size_t maxPeriod, size_t confidenceLevel,
+                    auto &&printFilter)
+{
+    auto res = BouncerDecider{}.find(m, degree, maxSteps, maxPeriod, confidenceLevel);
+    if (res.found)
+    {
+        if (res.degree == 1)
+        {
+            ++enumData["tcyclers"].count;
+            enumData["tcyclers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t' << "?"
+                                      << '\t' << res.start << '\t' << res.xPeriod << '\n';
+        }
+        else if (res.degree == 2)
+        {
+            // Check for bell or fake bouncer
+            auto res2 = BouncerDecider{}.find(m, 2, 4 * maxSteps, res.xPeriod, 3 * confidenceLevel);
+            if (res2.start != res.start || res2.xPeriod != res.xPeriod)
+            {
+                ++enumData["bells"].count;
+                enumData["bells"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\n';
+            }
+            else
+            {
+                ++enumData["bouncers"].count;
+                if (printFilter(res))
+                    enumData["bouncers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                              << res.start << '\t' << res.xPeriod << '\n';
+            }
+        }
+        else if (res.degree == 3)
+        {
+            ++enumData["cubic bells"].count;
+            if (printFilter(res))
+                enumData["cubic bells"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                             << res.start << '\t' << res.xPeriod << '\n';
+        }
+        else if (res.degree == 4)
+        {
+            ++enumData["quartic bells"].count;
+            enumData["quartic bells"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                           << res.degree << '\t' << res.start << '\t' << res.xPeriod << '\n';
+        }
+        else
+        {
+            ++enumData["quintic bells"].count;
+            enumData["quintic bells"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                           << res.degree << '\t' << res.start << '\t' << res.xPeriod << '\n';
+        }
+        return true;
+    }
+    return false;
+}
+
+inline bool counter(TuringMachine &m, size_t simulationSteps)
+{
+    if (simulationSteps > 0)
+    {
+        size_t tapeSizeBound = 25 * log10(simulationSteps);
+        for (size_t i = 0; i < simulationSteps; ++i)
+        {
+            m.step();
+            if (m.tape().size() > tapeSizeBound)
+                break;
+        }
+        if (m.tape().size() <= tapeSizeBound)
+        {
+            ++enumData["counters"].count;
+            enumData["counters"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
+                                      << m.tape().size() << '\n';
+            return true;
+        }
+    }
+    return false;
+}
+
 void run(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
 {
     auto &&[cyclerPBound, cyclerSBound] = getCyclerBounds(nStates, nSymbols);
     auto &&[tcPBound, tcSBound] = getTCBounds(nStates, nSymbols);
     size_t tcCutoff = interestingTCCutoff(nStates, nSymbols);
-
-    vector<string> names{"cyclers", "tcyclers", "bouncers", "cubic bells", "quartic bells", "counters", "unclassified"};
-    boost::unordered_flat_map<string, enumerate_info> data;
-    size_t total = 0;
     string directory = "out/";
     directory += to_string(nStates) + "x" + to_string(nSymbols) + "/";
     for (auto &&name : names)
-        data[name].fout.open(directory + name + ".txt");
-    data["unclassified"].fout << fixed << setprecision(6);
+        enumData[name].fout.open(directory + name + ".txt");
+    enumData["unclassified"].fout << fixed << setprecision(6);
 
     auto printCounts = [&]() {
         cout << total << " total";
         for (auto &&name : names)
-            cout << " | " << data[name].count << ' ' << name;
+            if (enumData[name].count > 0)
+                cout << " | " << enumData[name].count << ' ' << name;
         cout << '\n';
     };
 
-    auto tc = [&](TuringMachine &m, size_t maxSteps, size_t startPeriodBound) {
-        m.reset();
-        auto res = TranslatedCyclerDecider{}.find(m, maxSteps, startPeriodBound);
-        if (res.period > 0)
-        {
-            ++data["tcyclers"].count;
-            if (res.period >= tcCutoff || res.preperiod >= tcCutoff)
-                data["tcyclers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
-                                      << res.period << '\t' << res.preperiod << '\t' << res.offset << '\n';
-            return true;
-        }
-        return false;
-    };
-
     enumTMs(nStates, nSymbols, maxSteps, [&](auto m) {
+        m.reset();
         ++total;
         if (total % 10'000 == 0)
         {
-            cout << "So far: ";
+            cout << ansi::dim << "  (so far) ";
             printCounts();
+            cout << ansi::reset;
         }
-        // Get the short translated cyclers out of the way first.
-        m.reset();
-        if (tc(m, 50, 10))
+        if (tcFast(m, 32, 16))
             return;
-        // Test cyclers.
-        m.reset();
-        auto resC = CyclerDecider{}.find(m, cyclerSBound, cyclerPBound);
-        if (resC.period > 0)
-        {
-            ++data["cyclers"].count;
-            if (resC.preperiod >= tcCutoff || resC.period >= tcCutoff)
-                data["cyclers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
-                                     << resC.period << '\t' << resC.preperiod << '\n';
+        if (cyclerFast(m, cyclerSBound, cyclerPBound))
             return;
-        }
-        // Test slightly longer translated cyclers now.
-        m.reset();
-        if (tc(m, 5000, 2000))
+        if (tc(m, 2048, 1024, tcCutoff))
             return;
-        // Test bouncer/bell
-        m.reset();
-        auto resB = BouncerDecider{}.find(m, 4, 25000, 512);
-        if (resB.found)
-        {
-            if (resB.degree == 1)
-            {
-                ++data["tcyclers"].count;
-                data["tcyclers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t' << "?"
-                                      << '\t' << resB.start << '\t' << resB.xPeriod << '\n';
-            }
-            else if (resB.degree == 2)
-            {
-                ++data["bouncers"].count;
-                if (nStates == 3 || resB.start >= 1000 || resB.xPeriod >= 10)
-                    data["bouncers"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
-                                          << resB.start << '\t' << resB.xPeriod << '\n';
-            }
-            else if (resB.degree == 3)
-            {
-                ++data["cubic bells"].count;
-                if (nStates == 4 || resB.start >= 1000 || resB.xPeriod >= 10)
-                    data["cubic bells"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
-                                             << resB.start << '\t' << resB.xPeriod << '\n';
-            }
-            else
-            {
-                ++data["quartic bells"].count;
-                data["quartic bells"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
-                                           << resB.degree << '\t' << resB.start << '\t' << resB.xPeriod << '\n';
-            }
+        if (bouncer(m, 5, 25000, 500, 5, [&](auto res) {
+                if (res.degree == 2)
+                    return nStates <= 3 || res.xPeriod >= 10 || res.start >= 1000;
+                if (res.degree == 3)
+                    return nStates <= 4 || res.xPeriod >= 10 || res.start >= 1000;
+                return true;
+            }))
             return;
-        }
-        // Test counter
-        if (simulationSteps > 0)
-        {
-            m.reset();
-            size_t tapeSizeBound = 25 * log10(simulationSteps);
-            for (size_t i = 0; i < simulationSteps; ++i)
-            {
-                m.step();
-                if (m.tape().size() > tapeSizeBound)
-                    break;
-            }
-            if (m.tape().size() <= tapeSizeBound)
-            {
-                ++data["counters"].count;
-                data["counters"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\t'
-                                      << m.tape().size() << '\n';
-                return;
-            }
-        }
-
-        // Run powerful tcycler detector...
-        m.reset();
-        if (tc(m, tcSBound, tcPBound))
+        if (counter(m, simulationSteps))
+            return;
+        if (tc(m, tcSBound, tcPBound, tcCutoff))
             return;
 
-        ++data["unclassified"].count;
-        data["unclassified"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\n';
+        ++enumData["unclassified"].count;
+        enumData["unclassified"].fout << setw(8) << total << '\t' << lexicalNormalForm(m.rule()).str() << '\n';
     });
     cout << "Final count: ";
     printCounts();

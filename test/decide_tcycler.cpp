@@ -22,7 +22,7 @@ void p1s32779478()
     assertEqual(res.period, 1);
     assertEqual(res.preperiod, 32779478);
     assertEqual(res.offset, -1);
-    pass("p1s32779478");
+    pass("p1 s32779478");
 }
 
 void p2575984()

@@ -152,7 +152,8 @@ inline std::string getBgStyle(state_type state)
     case 5:
         return ansi::bg(0, 128, 128);
     case -1:
-        return ansi::str(ansi::invert);
+    case 25:
+        return ansi::bg(255, 0, 0);
     default:
         return "";
     }
@@ -239,6 +240,9 @@ class Tape
     using container_type = std::vector<symbol_type>;
     static constexpr size_t defaultPrintWidth = 50;
 
+    /// Constructor for Tape.
+    constexpr Tape(container_type data = {0}, int64_t head = 0) : _data(std::move(data)), _head(head) {}
+
     symbol_type &operator*() { return _data[_head + _offset]; }
     constexpr symbol_type operator*() const { return _data[_head + _offset]; }
 
@@ -269,14 +273,12 @@ class Tape
                                                    std::ranges::subrange(_data.begin() + 1, _data.end()));
     }
 
-    constexpr void step(const transition &tr)
+    /// Steps, and returns whether the tape expanded as a result of the step.
+    constexpr bool step(const transition &tr)
     {
         **this = tr.symbol;
-        if (tr.direction == direction::left)
-            moveLeft();
-        else
-            moveRight();
         _state = tr.toState;
+        return tr.direction == direction::left ? moveLeft() : moveRight();
     }
 
     /// Returns a string representation of this tape, colored for the terminal.
@@ -313,7 +315,7 @@ class Tape
     int64_t _leftEdge = 0;
     state_type _state = 0;
 
-    constexpr void moveLeft()
+    constexpr bool moveLeft()
     {
         --_head;
         if (_head < _leftEdge)
@@ -325,14 +327,20 @@ class Tape
                 _data.insert(_data.begin(), n, 0);
                 _offset += n;
             }
+            return true;
         }
+        return false;
     }
 
-    constexpr void moveRight()
+    constexpr bool moveRight()
     {
         ++_head;
         if (_head + _offset >= (int64_t)_data.size())
+        {
             _data.push_back(0);
+            return true;
+        }
+        return false;
     }
 
     [[nodiscard]] constexpr std::string strAux(size_t width = defaultPrintWidth, bool printState = true,
@@ -443,16 +451,14 @@ class TuringMachine
     {
         if (halted())
             return {false, false};
-        auto sz = _tape.size();
-        _tape.step(peek());
         ++_steps;
-        return {true, _tape.size() != sz};
+        return {true, _tape.step(peek())};
     }
 
-    /// Resets this Turing machine to the initial tape and step 0, but keeps the rule.
-    void reset()
+    /// Resets this Turing machine to the given tape and step 0, but keeps the rule.
+    void reset(Tape tape = {})
     {
-        _tape = {};
+        _tape = std::move(tape);
         _steps = 0;
     }
 

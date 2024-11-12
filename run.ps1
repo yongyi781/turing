@@ -11,7 +11,7 @@ param (
 $ErrorActionPreference = 'Stop'
 
 $mode = $DebugPreference ? "debug" : "release"
-if (-not $File.EndsWith(".cpp")) {
+if (-not $File.Contains(".")) {
     $File += ".cpp"
 }
 $content = Get-Content -Path $File -Raw

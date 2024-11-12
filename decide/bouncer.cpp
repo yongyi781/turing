@@ -12,7 +12,8 @@ void run(turing_rule rule, size_t degree, size_t numSteps, size_t maxPeriod, siz
 {
     auto res = BouncerDecider{verbose}.find(rule, degree, numSteps, maxPeriod, confidenceLevel);
     if (res.found)
-        cout << "(degree, start, xPeriod) = " << tuple{res.degree, res.start, res.xPeriod} << '\n';
+        cout << "(degree, start, xPeriod, side) = "
+             << tuple{res.degree, res.start, res.xPeriod, res.side == direction::left ? 'L' : 'R'} << '\n';
     else
         cout << "No bouncer found\n";
 }

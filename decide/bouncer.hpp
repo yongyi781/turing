@@ -12,6 +12,8 @@ struct bouncer_result
     size_t start = 0;
     /// Number of tape growth events (on a given side) per repeat.
     size_t xPeriod = 0;
+    /// The side the bouncer was detected on.
+    direction side = direction::left;
 };
 
 class BouncerDecider
@@ -47,6 +49,7 @@ class BouncerDecider
                     {
                         if (_verbose)
                             std::cout << "L: " << ls << ", xPeriod = " << p << '\n';
+                        res.side = direction::left;
                         return res;
                     }
                 }
@@ -67,6 +70,7 @@ class BouncerDecider
                     {
                         if (_verbose)
                             std::cout << "R: " << rs << ", xPeriod = " << p << '\n';
+                        res.side = direction::right;
                         return res;
                     }
                 }

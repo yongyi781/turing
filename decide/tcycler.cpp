@@ -8,9 +8,13 @@
 using namespace std;
 using namespace turing;
 
-void run(turing_rule rule, size_t numSteps, size_t initialPeriodBound, bool verbose)
+void run(turing_rule rule, size_t numSteps, size_t initialPeriodBound, bool fast, bool verbose)
 {
-    auto &&res = TranslatedCyclerDecider(verbose).find(rule, numSteps, initialPeriodBound);
+    find_period_result res;
+    if (fast)
+        res = TranslatedCyclerDecider{verbose}.findPeriodOnly(rule, numSteps, initialPeriodBound);
+    else
+        res = TranslatedCyclerDecider(verbose).find(rule, numSteps, initialPeriodBound);
     if (res.period == 0)
         cout << "No period found\n";
     else
@@ -29,12 +33,14 @@ Arguments:
 
 Options:
   -h, --help           Show this help message
-  -v, --verbose        Show verbose output
-  -p, --period <n>     The initial period bound (default: 10000)
+  -f, --fast           Don't calculate exact preperiod
   -n, --num-steps <n>  The number of steps to run for (default: unbounded)
+  -p, --period <n>     The initial period bound (default: 10000)
+  -v, --verbose        Show verbose output
 )";
     span args(argv, argc);
     turing_rule rule;
+    bool fast = false;
     bool verbose = false;
     size_t numSteps = std::numeric_limits<size_t>::max();
     size_t initialPeriodBound = 10000;
@@ -45,7 +51,9 @@ Options:
             cout << help;
             return 0;
         }
-        if (strcmp(args[i], "-v") == 0 || strcmp(args[i], "--verbose") == 0)
+        if (strcmp(args[i], "-f") == 0 || strcmp(args[i], "--fast") == 0)
+            fast = true;
+        else if (strcmp(args[i], "-v") == 0 || strcmp(args[i], "--verbose") == 0)
             verbose = true;
         else if (strcmp(args[i], "-p") == 0 || strcmp(args[i], "--period") == 0)
             initialPeriodBound = parseNumber(args[++i]);
@@ -71,5 +79,5 @@ Options:
         cout << help;
         return 0;
     }
-    printTiming(run, rule, numSteps, initialPeriodBound, verbose);
+    printTiming(run, rule, numSteps, initialPeriodBound, fast, verbose);
 }

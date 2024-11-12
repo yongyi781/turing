@@ -84,5 +84,6 @@ Comments:
         cout << help;
         return 0;
     }
+    ios::sync_with_stdio(false);
     printTiming(run, rule, degree, numSteps, maxPeriod, confidenceLevel, verbose);
 }

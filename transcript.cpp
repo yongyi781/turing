@@ -6,7 +6,7 @@
 using namespace std;
 using namespace turing;
 
-void run(turing_rule rule, size_t numSteps)
+void run(turing_rule rule, size_t numSteps, state_type breakState, symbol_type breakSymbol)
 {
     TuringMachine m{rule};
     cout << (char)('A' + m.state()) << "_ ";
@@ -15,6 +15,9 @@ void run(turing_rule rule, size_t numSteps)
         auto res = m.step();
         if (!res.success)
             break;
+        if (breakState == -1 ||
+            (m.state() == breakState && (breakSymbol == (symbol_type)-1 || *m.tape() == breakSymbol)))
+            cout << '\n';
         cout << (char)('A' + m.state()) << (res.tapeExpanded ? '_' : (char)('0' + *m.tape())) << ' ';
     }
     cout << '\n';
@@ -31,12 +34,15 @@ Arguments:
   [n]   Number of steps (default: 1000)
 
 Options:
-  -h, --help                  Show this help message
+  -h, --help       Show this help message
+  -b, --break <x>  Break on state or state/symbol
 )";
     span args(argv, argc);
     turing_rule rule;
     size_t numSteps = 1000;
     int argPos = 0;
+    state_type breakState = -1;
+    symbol_type breakSymbol = -1;
     for (int i = 1; i < argc; ++i)
     {
         if (strcmp(args[i], "-h") == 0 || strcmp(args[i], "--help") == 0)
@@ -44,7 +50,13 @@ Options:
             cout << help;
             return 0;
         }
-        if (argPos == 0)
+        if (strcmp(args[i], "-b") == 0 || strcmp(args[i], "--break") == 0)
+        {
+            breakState = toupper(args[++i][0]) - 'A';
+            if (strlen(args[i]) > 1)
+                breakSymbol = toupper(args[i][1]) - '0';
+        }
+        else if (argPos == 0)
         {
             ++argPos;
             rule = turing_rule(args[i]);
@@ -71,5 +83,5 @@ Options:
         return 0;
     }
     ios::sync_with_stdio(false);
-    printTiming(run, rule, numSteps);
+    printTiming(run, rule, numSteps, breakState, breakSymbol);
 }

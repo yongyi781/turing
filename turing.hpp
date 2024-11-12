@@ -42,8 +42,8 @@ struct transition
     state_type toState = -1;
 };
 
-constexpr size_t maxStates = 8;
-constexpr size_t maxSymbols = 8;
+constexpr size_t maxStates = 6;
+constexpr size_t maxSymbols = 6;
 class turing_rule
 {
   public:

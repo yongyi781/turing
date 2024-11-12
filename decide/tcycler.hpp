@@ -4,7 +4,7 @@
 
 namespace turing
 {
-constexpr double periodGrowthRatio = 1.2;
+constexpr double periodGrowthRatio = 1.1;
 
 /// Checks period of before and after.
 inline bool checkForPeriod(const TuringMachine &before, const TuringMachine &after, int64_t start, int64_t stop)
@@ -157,10 +157,10 @@ class TranslatedCyclerDecider : public CyclerDecider
             // Grab edge tape
             for (size_t i = 0; i < periodBound; ++i)
             {
-                auto &&[success, expanded] = machine.step();
-                if (!success)
+                auto res = machine.step();
+                if (!res.success)
                     return {};
-                if (expanded)
+                if (res.tapeExpanded)
                 {
                     prev = machine;
                     expandDir = machine.head() < 0 ? -1 : 1;
@@ -178,12 +178,12 @@ class TranslatedCyclerDecider : public CyclerDecider
             int64_t hh = prev.head();
             for (size_t i = 1; i <= periodBound; ++i)
             {
-                auto &&[success, expanded] = machine.step();
-                if (!success)
+                auto res = machine.step();
+                if (!res.success)
                     return {};
                 lh = std::min(lh, machine.head());
                 hh = std::max(hh, machine.head());
-                if (expanded && machine.state() == prev.state())
+                if (res.tapeExpanded && machine.state() == prev.state())
                 {
                     int expandDir2 = machine.head() < 0 ? -1 : 1;
                     if (expandDir != expandDir2)

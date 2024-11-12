@@ -45,16 +45,11 @@ clangArgs=(
     $([ $mode == "debug" ] && echo "-g" || echo "")
     "-march=native"
     "-pthread"
+    "-isystem"
+    "../euler/include"
     "$file"
     "-o"
     "$outputFile"
-    "-lstdc++exp"
-    "-ltbb"
-    "-lntl"
-    "-lprimecount"
-    "-lprimesieve"
-    # "-lmpc"
-    # "-lmpfr"
     "-lgmp"
     "-Wl,-s"
 )

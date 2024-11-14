@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <deque>
+#include <ranges>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,13 +19,14 @@ using state_type = int8_t;
 // Trim from start (in place)
 inline void ltrim(std::string &s)
 {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](char ch) { return !std::isspace(ch); }));
+    s.erase(s.begin(), std::ranges::find_if(s, [](char ch) { return !std::isspace(ch); }));
 }
 
 // Trim from end (in place)
 inline void rtrim(std::string &s)
 {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](char ch) { return !std::isspace(ch); }).base(), s.end());
+    s.erase(std::ranges::find_if(std::ranges::reverse_view(s), [](char ch) { return !std::isspace(ch); }).base(),
+            s.end());
 }
 
 /// Left or right.
@@ -56,7 +58,7 @@ class turing_rule
             return;
         std::istringstream ss(code);
         std::string token;
-        std::vector<std::string> rows;
+        const std::vector<std::string> rows;
         size_t i = 0;
         for (; std::getline(ss, token, '_') && i < maxStates; ++i)
         {
@@ -74,7 +76,7 @@ class turing_rule
                     _data[i][j] = transition{.symbol = 1, .direction = direction::right, .toState = -1};
                 else
                 {
-                    symbol_type symbol = triple[0] - '0';
+                    const symbol_type symbol = triple[0] - '0';
                     if (symbol >= _nSymbols || (triple[1] != 'L' && triple[1] != 'R'))
                     {
                         _nSymbols = 0;
@@ -214,20 +216,20 @@ struct tape_segment
     }
 };
 
-struct packed_transition
+struct macro_transition
 {
     tape_segment from;
     tape_segment to;
     size_t steps = 0;
 
-    constexpr friend bool operator==(const packed_transition &a, const packed_transition &b)
+    constexpr friend bool operator==(const macro_transition &a, const macro_transition &b)
     {
         return a.from == b.from && a.to == b.to;
     }
 
     template <typename CharT, typename Traits>
     friend std::basic_ostream<CharT, Traits> &operator<<(std::basic_ostream<CharT, Traits> &o,
-                                                         const turing::packed_transition &ts)
+                                                         const turing::macro_transition &ts)
     {
         return o << ts.from << " → " << ts.to << " (" << ts.steps << ", " << ts.to.head - ts.from.head << ")";
     }
@@ -281,7 +283,7 @@ class Tape
         return tr.direction == direction::left ? moveLeft() : moveRight();
     }
 
-    /// Returns a string representation of this tape, colored for the terminal.
+    /// Returns a string representation of this tape.
     [[nodiscard]] constexpr std::string str(size_t width = defaultPrintWidth) const
     {
         return strAux(width, true, ">", {});
@@ -293,7 +295,9 @@ class Tape
         return strAux(width, false, getBgStyle(_state), ansi::str(ansi::bgDefault));
     }
 
-    /// Gets the tape segment, inclusive.
+    /// @brief Gets the tape segment between `start` and `stop`, inclusive.
+    /// @param start The start position (inclusive).
+    /// @param stop The stop position (inclusive).
     [[nodiscard]] tape_segment getSegment(int64_t start, int64_t stop) const
     {
         std::vector<symbol_type> v(size_t(stop - start + 1));
@@ -323,7 +327,7 @@ class Tape
             --_leftEdge;
             if (_head + _offset < 0)
             {
-                size_t n = _data.size();
+                const size_t n = _data.size();
                 _data.insert(_data.begin(), n, 0);
                 _offset += n;
             }
@@ -350,13 +354,13 @@ class Tape
         std::string s;
         if (printState)
             s += (char)(_state + 'A');
-        int64_t shift = width / 2;
-        int64_t start = width * floorDiv((int64_t)(_head + shift), (int64_t)width) - shift;
+        const int64_t shift = width / 2;
+        const int64_t start = width * floorDiv((int64_t)(_head + shift), (int64_t)width) - shift;
         for (int64_t i = start; i < (int64_t)(start + width); ++i)
         {
             if (i == _head)
                 s += headPrefix;
-            int64_t j = i + _offset;
+            const int64_t j = i + _offset;
             s += (i >= _leftEdge && i <= rightEdge() ? (char)('0' + _data[j]) : ' ');
             if (i == _head)
                 s += headSuffix;
@@ -512,7 +516,7 @@ constexpr size_t hash_value(const turing::tape_segment &t)
 }
 
 /// Hash
-constexpr size_t hash_value(const turing::packed_transition &t)
+constexpr size_t hash_value(const turing::macro_transition &t)
 {
     size_t seed = 0;
     boost::hash_combine(seed, t.from);

@@ -38,7 +38,7 @@ Options:
   -p, --period <n>     The initial period bound (default: 10000)
   -v, --verbose        Show verbose output
 )";
-    span args(argv, argc);
+    const span args(argv, argc);
     turing_rule rule;
     bool fast = false;
     bool verbose = false;

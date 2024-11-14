@@ -90,7 +90,7 @@ inline vector<int> analyze(turing::TuringMachine m, size_t maxSteps, auto filter
     int64_t lh = tape.head() - 1;
     int64_t hh = tape.head();
 
-    boost::unordered_flat_map<packed_transition, int> tMap;
+    boost::unordered_flat_map<macro_transition, int> tMap;
     vector<int> ts;
     int counter = 0;
     bool first = !filter(m.tape());
@@ -112,7 +112,7 @@ inline vector<int> analyze(turing::TuringMachine m, size_t maxSteps, auto filter
                 first = false;
             else
             {
-                packed_transition key{tape.getSegment(lh, hh), m.tape().getSegment(lh, hh), m.steps() - steps};
+                macro_transition key{tape.getSegment(lh, hh), m.tape().getSegment(lh, hh), m.steps() - steps};
                 if (!tMap.contains(key))
                     tMap[key] = counter++;
                 int mIndex = tMap[key];

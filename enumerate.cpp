@@ -240,7 +240,7 @@ inline bool counter(TuringMachine &m, size_t simulationSteps)
 {
     if (simulationSteps > 0)
     {
-        size_t tapeSizeBound = 25 * log10(simulationSteps);
+        const size_t tapeSizeBound = 25 * log10(simulationSteps);
         for (size_t i = 0; i < simulationSteps; ++i)
         {
             m.step();
@@ -292,7 +292,7 @@ void run(int nStates, int nSymbols, size_t maxSteps, size_t simulationSteps)
             return;
         if (tc(m, 2048, 1024, tcCutoff))
             return;
-        if (bouncer(m, 5, 25000, 500, 5, [&](auto res) {
+        if (bouncer(m, 4, 25000, 3000, 6, [&](auto res) {
                 if (res.degree == 2)
                     return nStates <= 3 || res.xPeriod >= 10 || res.start >= 1000;
                 if (res.degree == 3)
@@ -335,7 +335,7 @@ Comments:
   directory if it does not exist before running this tool, otherwise no file
   will be written.
 )";
-    span args(argv, argc);
+    const span args(argv, argc);
     int nStates = 3;
     int nSymbols = 2;
     size_t maxSteps = std::numeric_limits<size_t>::max();

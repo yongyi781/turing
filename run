@@ -50,6 +50,7 @@ clangArgs=(
     "$file"
     "-o"
     "$outputFile"
+    "-ltbb12",
     "-lgmp"
     "-Wl,-s"
 )

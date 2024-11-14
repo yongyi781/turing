@@ -33,7 +33,7 @@ Options:
   -p, --period <n>     The initial period bound (default: 10000)
   -n, --num-steps <n>  The number of steps to run for (default: unbounded)
 )";
-    span args(argv, argc);
+    const span args(argv, argc);
     turing_rule rule;
     bool verbose = false;
     size_t numSteps = std::numeric_limits<size_t>::max();

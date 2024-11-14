@@ -53,7 +53,6 @@ $clangArgs = $(
     "$File",
     "-o",
     "$outputFile",
-    "-lstdc++exp",
     "-ltbb12",
     "-lgmp",
     "-Wl,-s"

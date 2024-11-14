@@ -32,7 +32,7 @@ void cycler483328(size_t nSteps = 100000000)
 }
 
 // Manual compilation is about twice as fast. `1RB1LC_0LA1RD_1LA0LC_0RB0RD`
-void cycler483328Decompiled(size_t nSteps = 100000000)
+void cycler483328Decompiled(size_t nSteps = 100000000) // NOLINT(readability-function-cognitive-complexity)
 {
     using direction::left, direction::right;
     Tape tape;

@@ -91,7 +91,7 @@ inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, s
     int64_t lh = tape.head() - 1;
     int64_t hh = tape.head();
 
-    boost::unordered_flat_map<packed_transition, int> tMap;
+    boost::unordered_flat_map<macro_transition, int> tMap;
     vector<int> ts;
     int counter = 0;
     bool first = m.state() != stateToAnalyze || !compareSymbol(symbolToAnalyze, *m.tape());
@@ -126,7 +126,7 @@ inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, s
             {
                 auto fromSegment = tape.getSegment(lh, hh);
                 auto toSegment = m.tape().getSegment(lh, hh);
-                packed_transition key{fromSegment, toSegment, m.steps() - steps};
+                macro_transition key{fromSegment, toSegment, m.steps() - steps};
                 if (!tMap.contains(key))
                     tMap[key] = counter++;
                 int mIndex = tMap[key];
@@ -146,7 +146,9 @@ inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, s
 
 auto run(string code, state_type state, state_type symbol, size_t steps)
 {
-    // return str01(it::wrap(string{"1011101101011010110101101011010101"}).map fun(x, (state_type)(x - '0')).to());
+    // return str01(it::wrap(string{"1010110101010110110110110110110110101101011011010101101010010"})
+    //                  .map fun(x, (state_type)(x - '0'))
+    //                  .to());
     auto res = analyze(std::move(code), state, symbol, steps);
     return it::wrap(res).map fun(x, (char)(x >= 10 ? 'A' + x - 10 : '0' + x)).to<string>();
 }

@@ -62,7 +62,7 @@ inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, s
     int64_t lh = tape.head();
     int64_t hh = tape.head();
 
-    boost::unordered_flat_map<packed_transition, int> tMap;
+    boost::unordered_flat_map<macro_transition, int> tMap;
     vector<int> ts;
     int counter = 0;
     bool first = m.state() != stateToAnalyze || !compareSymbol(symbolToAnalyze, *m.tape());
@@ -77,7 +77,7 @@ inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, s
         }
         else
         {
-            bool print = true;
+            const bool print = true;
             // If there is a symbol filter, update lh and hh
             if (symbolToAnalyze != (uint8_t)-1)
             {
@@ -94,12 +94,12 @@ inline vector<int> analyze(turing::TuringMachine m, state_type stateToAnalyze, s
             {
                 auto fromSegment = tape.getSegment(lh, hh);
                 auto toSegment = m.tape().getSegment(lh, hh);
-                packed_transition key{fromSegment, toSegment, m.steps() - steps};
+                const macro_transition key{.from = fromSegment, .to = toSegment, .steps = m.steps() - steps};
                 if (!tMap.contains(key))
                     tMap[key] = counter++;
                 // else
                 //     print = false;
-                int mIndex = tMap[key];
+                const int mIndex = tMap[key];
                 ts.push_back(mIndex + 1);
                 ss << getFgStyle(mIndex) << setw(4) << "T" + to_string(mIndex + 1) << ansi::reset << " = " << key;
                 // print = mIndex == 3;
@@ -138,7 +138,7 @@ Options:
   -n, --num-steps <number>  Maximum number of steps (default: 1000)
   -w, --width <number>      Print width of tape output (default: 60)
 )";
-    span args(argv, argc);
+    const span args(argv, argc);
     turing_rule rule;
     state_type stateFilter = 0;
     symbol_type symbolFilter = -1;

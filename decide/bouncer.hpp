@@ -16,6 +16,13 @@ struct bouncer_result
     direction side = direction::left;
 };
 
+struct record
+{
+    size_t t = 0;
+    direction side = direction::left;
+    state_type state = 0;
+};
+
 class BouncerDecider
 {
   public:
@@ -25,55 +32,30 @@ class BouncerDecider
     [[nodiscard]] bouncer_result find(TuringMachine m, size_t degree, size_t maxSteps, size_t maxPeriod,
                                       size_t confidenceLevel = 5) const
     {
-        std::vector<size_t> ls{0};
-        std::vector<size_t> rs{0};
+        std::vector<record> records{{}};
         while (!m.halted() && m.steps() < maxSteps)
         {
             auto res = m.step();
             if (!res.tapeExpanded)
                 continue;
-            // Tape grew
-            if (m.head() < 0)
+            const record rec{
+                .t = m.steps(), .side = m.head() < 0 ? direction::left : direction::right, .state = m.state()};
+            if (_verbose)
             {
-                if (_verbose)
-                {
+                if (rec.side == direction::left)
                     std::cout << ansi::fg(204, 220, 255) << "L | ";
-                    std::cout << std::setw(13) << formatDelta(ls.back(), m.steps()) << " | ";
-                    print(m) << ansi::reset;
-                }
-                ls.push_back(m.steps());
-                for (size_t p = 1; p <= maxPeriod; ++p)
-                {
-                    auto res = checkPoly(ls, degree, p, confidenceLevel);
-                    if (res.found)
-                    {
-                        if (_verbose)
-                            std::cout << "L: " << ls << ", xPeriod = " << p << '\n';
-                        res.side = direction::left;
-                        return res;
-                    }
-                }
-            }
-            else
-            {
-                if (_verbose)
-                {
+                else
                     std::cout << ansi::fg(255, 204, 204) << " R| ";
-                    std::cout << std::setw(13) << formatDelta(rs.back(), m.steps()) << " | ";
-                    print(m) << ansi::reset;
-                }
-                rs.push_back(m.steps());
-                for (size_t p = 1; p <= maxPeriod; ++p)
-                {
-                    auto res = checkPoly(rs, degree, p, confidenceLevel);
-                    if (res.found)
-                    {
-                        if (_verbose)
-                            std::cout << "R: " << rs << ", xPeriod = " << p << '\n';
-                        res.side = direction::right;
-                        return res;
-                    }
-                }
+                std::cout << std::setw(13) << formatDelta(records.back().t, m.steps()) << " | ";
+                print(m) << ansi::reset;
+            }
+            records.push_back(rec);
+            const auto hp = std::min(maxPeriod, (records.size() - 1) / (degree + confidenceLevel - 1));
+            for (size_t p = 1; p <= hp; ++p)
+            {
+                auto res = checkPoly(records, degree, p, confidenceLevel);
+                if (res.found)
+                    return res;
             }
         }
         return {};
@@ -82,17 +64,25 @@ class BouncerDecider
   private:
     bool _verbose;
 
-    [[nodiscard]] bouncer_result checkPoly(const std::vector<size_t> &v, size_t degree, size_t p,
+    [[nodiscard]] bouncer_result checkPoly(const std::vector<record> &v, size_t degree, size_t p,
                                            size_t confidenceLevel) const
     {
-        size_t n = degree + confidenceLevel; // Number of elements to check
-        size_t N = 1 + (n - 1) * p;          // Size of range to check
+        const size_t n = degree + confidenceLevel; // Number of elements to check
+        const size_t N = 1 + (n - 1) * p;          // Size of range to check
         if (v.size() < N)
             return {};
-        std::vector w(n, 0LL);
         auto start = v.end() - N;
-        for (size_t i = 0; i < n; ++i)
-            w[i] = *(start + i * p);
+        if (!sameRecordType(*start, v.back()))
+            return {};
+        std::vector w(n, (int64_t)start->t);
+        for (size_t i = 1; i < n; ++i)
+        {
+            const auto rec = start + i * p;
+            if (!sameRecordType(*rec, *start))
+                return {};
+            w[i] = rec->t;
+        }
+        // Calculate iterated finite differences
         for (size_t d = 1; d <= degree; ++d)
         {
             for (size_t i = 0; i < w.size() - 1; ++i)
@@ -103,11 +93,16 @@ class BouncerDecider
                                    std::ranges::subrange(w.begin() + 1, w.end())))
             {
                 if (_verbose)
-                    std::cout << "v = " << v << ", w = " << w << '\n';
-                return {true, d, *start, p};
+                    std::cout << "w = " << w << '\n';
+                return {.found = true, .degree = d, .start = start->t, .xPeriod = p, .side = start->side};
             }
         }
         return {};
+    }
+
+    static bool sameRecordType(const record &a, const record &b)
+    {
+        return (a.t == 0 || b.t == 0 || a.side == b.side) && a.state == b.state;
     }
 
     static std::ostream &print(const TuringMachine &m)
@@ -120,7 +115,7 @@ class BouncerDecider
     static std::string formatDelta(size_t a, size_t b)
     {
         std::ostringstream ss;
-        double r = (double)b / a;
+        const double r = (double)b / a;
         if (a == 0 || r < 1.1)
             ss << "+" << b - a;
         else

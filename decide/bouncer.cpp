@@ -40,7 +40,7 @@ Comments:
   Currently heuristic based on tape growth, and catches bells (including transient ones)
   along with bouncers. Can detect cubic, quartic, etc. bells as well.
 )";
-    span args(argv, argc);
+    const span args(argv, argc);
     turing_rule rule;
     bool verbose = false;
     size_t numSteps = 100'000'000;

@@ -88,7 +88,7 @@ class CyclerDecider
         {
             if (_verbose)
                 std::cout << machine.steps() << " | " << machine.prettyStr() << '\n';
-            TuringMachine prev = machine;
+            const TuringMachine prev = machine;
             int64_t lh = prev.head();
             int64_t hh = prev.head();
             for (size_t i = 1; i <= periodBound; ++i)
@@ -100,7 +100,10 @@ class CyclerDecider
                 {
                     TuringMachine lastMachine =
                         i <= startPeriodBound ? std::move(prev2) : TuringMachine{machine.rule()};
-                    return {i, machine.steps() - i, machine.head() - prev.head(), std::move(lastMachine)};
+                    return {.period = i,
+                            .preperiod = machine.steps() - i,
+                            .offset = machine.head() - prev.head(),
+                            .lastMachine = std::move(lastMachine)};
                 }
             }
             periodBound = std::max(periodBound + 1, (size_t)(periodBound * periodGrowthRatio));
@@ -118,7 +121,7 @@ class CyclerDecider
         if (res.period == 0)
         {
             // No period found.
-            return {0UZ, 0UZ, 0LL, std::move(machine)};
+            return {.period = 0UZ, .preperiod = 0UZ, .offset = 0LL, .lastMachine = std::move(machine)};
         }
         if (self._verbose)
             std::cout << "period = " << res.period << ", offset = " << res.offset << '\n';
@@ -185,7 +188,7 @@ class TranslatedCyclerDecider : public CyclerDecider
                 hh = std::max(hh, machine.head());
                 if (res.tapeExpanded && machine.state() == prev.state())
                 {
-                    int expandDir2 = machine.head() < 0 ? -1 : 1;
+                    const int expandDir2 = machine.head() < 0 ? -1 : 1;
                     if (expandDir != expandDir2)
                         continue;
 
@@ -199,7 +202,10 @@ class TranslatedCyclerDecider : public CyclerDecider
                         // i = period.
                         TuringMachine lastMachine =
                             prevPeriodBound >= i ? std::move(prev2) : TuringMachine{machine.rule()};
-                        return {i, machine.steps() - i, machine.head() - prev.head(), std::move(lastMachine)};
+                        return {.period = i,
+                                .preperiod = machine.steps() - i,
+                                .offset = machine.head() - prev.head(),
+                                .lastMachine = std::move(lastMachine)};
                     }
                 }
             }

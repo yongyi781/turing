@@ -37,7 +37,10 @@ void runRLE(turing_rule rule, size_t numSteps, bool /*unused*/, state_type break
             ++c;
         else
         {
-            cout << token << "^" << c << ' ';
+            cout << token;
+            if (c > 1)
+                cout << "^" << c;
+            cout << ' ';
             token = token2;
             c = 1;
         }
@@ -45,7 +48,12 @@ void runRLE(turing_rule rule, size_t numSteps, bool /*unused*/, state_type break
             cout << '\n';
     }
     if (c > 0)
-        cout << token << "^" << c << ' ';
+    {
+        cout << token;
+        if (c > 1)
+            cout << "^" << c;
+        cout << ' ';
+    }
     cout << '\n';
 }
 
@@ -117,6 +125,5 @@ Options:
         return 0;
     }
     ios::sync_with_stdio(false);
-    cout << boolalpha << rle << '\n';
     printTiming(rle ? runRLE : run, rule, numSteps, noBlanks, breakState, breakSymbol);
 }

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <iostream>
-
 #include "../turing.hpp"
 
 inline void pass(std::string_view message)

@@ -9,14 +9,14 @@ using namespace turing;
 ostream &print(const TuringMachine &m)
 {
     cout << setw(6) << m.tape().size() << " | " << setw(10) << m.steps();
-    cout << " | " << m.prettyStr(40) << '\n';
+    cout << " | " << m.prettyStr(80) << '\n';
     return cout;
 }
 
 string formatDelta(size_t a, size_t b)
 {
     ostringstream ss;
-    double r = (double)b / a;
+    const double r = (double)b / a;
     if (a == 0 || r < 1.1)
         ss << "+" << b - a;
     else
@@ -85,11 +85,11 @@ Arguments:
 Options:
   -h, --help                  Show this help message
   -a, --all                   Show all deltas, not just increasing deltas.
-  -d, --dir <L|R>             Measure left or right (default: both)
+  -s, --side <L|R>            Measure left or right side (default: both)
   -s, --state <A|B|...>       Match state (default: all states)
   -n, --num-steps <number>    Maximum number of steps (default: 1000000)
 )";
-    span args(argv, argc);
+    const span args(argv, argc);
     turing_rule rule;
     int growDir = 0;
     state_type matchState = -1;
@@ -104,7 +104,7 @@ Options:
         }
         if (strcmp(args[i], "-a") == 0 || strcmp(args[i], "--all") == 0)
             allDeltas = true;
-        else if (strcmp(args[i], "-d") == 0 || strcmp(args[i], "--dir") == 0)
+        else if (strcmp(args[i], "-s") == 0 || strcmp(args[i], "--side") == 0)
         {
             if (strcmp(args[++i], "L") == 0)
                 growDir = -1;

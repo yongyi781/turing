@@ -14,6 +14,8 @@ struct bouncer_result
     size_t xPeriod = 0;
     /// The side the bouncer was detected on.
     direction side = direction::left;
+    /// The number of steps taken to decide this bouncer.
+    size_t steps = 0;
 };
 
 struct record
@@ -94,7 +96,12 @@ class BouncerDecider
             {
                 if (_verbose)
                     std::cout << "w = " << w << '\n';
-                return {.found = true, .degree = d, .start = start->t, .xPeriod = p, .side = start->side};
+                return {.found = true,
+                        .degree = d,
+                        .start = start->t,
+                        .xPeriod = p,
+                        .side = start->side,
+                        .steps = v.back().t};
             }
         }
         return {};

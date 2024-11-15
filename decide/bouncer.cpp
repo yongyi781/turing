@@ -12,8 +12,8 @@ void run(turing_rule rule, size_t degree, size_t numSteps, size_t maxPeriod, siz
 {
     auto res = BouncerDecider{verbose}.find(rule, degree, numSteps, maxPeriod, confidenceLevel);
     if (res.found)
-        cout << "(degree, start, xPeriod, side) = "
-             << tuple{res.degree, res.start, res.xPeriod, res.side == direction::left ? 'L' : 'R'} << '\n';
+        cout << "(degree, start, xPeriod, side, steps) = "
+             << tuple{res.degree, res.start, res.xPeriod, res.side == direction::left ? 'L' : 'R', res.steps} << '\n';
     else
         cout << "No bouncer found\n";
 }
@@ -33,7 +33,7 @@ Options:
   -v, --verbose           Show verbose output
   -d, --degree            The maximum degree to check for (default: 3)
   -n, --num-steps         The number of steps to run for (default: 1e8)
-  -p, --period            The maximum x-period to check for (default: 100)
+  -p, --period            The maximum x-period to check for (default: 5000)
   -c, --confidence-level  The number of extra tape growth terms to check (default: 5)
 
 Comments:
@@ -45,7 +45,7 @@ Comments:
     bool verbose = false;
     size_t numSteps = 100'000'000;
     size_t degree = 3;
-    size_t maxPeriod = 100;
+    size_t maxPeriod = 5000;
     size_t confidenceLevel = 5;
     for (int i = 1; i < argc; ++i)
     {

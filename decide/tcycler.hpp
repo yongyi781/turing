@@ -37,8 +37,12 @@ inline bool isPeriodic(TuringMachine m, size_t period)
 {
     assert(low <= high);
     // Binary search
+    if (m.steps() > low)
+        m.reset();
     for (size_t i = m.steps(); i < low; ++i)
         m.step();
+    if (isPeriodic(m, period))
+        return low;
     while (high - low > 1)
     {
         auto mid = low + (high - low) / 2;
@@ -129,8 +133,9 @@ class CyclerDecider
         if (self._verbose)
             std::cout << "Performing binary search with low = " << m.steps() << " and high = " << res.preperiod << '\n';
         auto preperiod = findPreperiod(m, res.period, m.steps(), res.preperiod, self._verbose);
-        if (self._verbose && (preperiod == 1 || preperiod == 2))
-            std::cout << "Note: preperiod may be 0\n";
+        // If preperiod was the minimum, restart binary search from 0.
+        if (preperiod == m.steps())
+            preperiod = findPreperiod(m, res.period, 0, preperiod, self._verbose);
         return {res.period, preperiod, res.offset, std::move(machine)};
     }
 

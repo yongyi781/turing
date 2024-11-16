@@ -45,7 +45,7 @@ string R(size_t n, size_t m)
 
 auto solve()
 {
-    turing_rule const rule{"1RB0LA_1RC---_0RD0RC_1LD0LA"};
+    turing_rule const rule{"1RB0LA_0RC1RB_0LD0RD_1RC1LA"};
     string const t = transcript(rule, 1e7);
     for (size_t n = 0;; ++n)
     {
@@ -53,9 +53,7 @@ auto solve()
         if (r.size() > t.size())
             break;
         size_t const size = (r.size() + 1) / 3;
-        size_t const calcSize = 2 * pow(4LL, n) + 4 * pow(3LL, n) - 2 * pow(2LL, n) - 1;
         assertEqual(r, t.substr(0, r.size()));
-        assertEqual(size, calcSize);
         pass(to_string(n) + " " + to_string(size));
     }
 }

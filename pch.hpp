@@ -75,7 +75,8 @@
 #include <boost/unordered/unordered_flat_set.hpp>
 
 #include <ansi.hpp>
-#include <euler.hpp>
+#include <euler/algorithm.hpp>
+#include <euler/it.hpp>
 #include <oklch.hpp>
 
 #include "dbg.hpp"

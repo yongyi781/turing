@@ -303,7 +303,7 @@ class Tape
         std::vector<symbol_type> v(size_t(stop - start + 1));
         for (int64_t i = start; i <= stop; ++i)
             v[i - start] = (*this)[i];
-        return {_state, v, _head - start};
+        return {.state = _state, .data = v, .head = _head - start};
     }
 
     template <typename CharT, typename Traits>
@@ -454,9 +454,9 @@ class TuringMachine
     step_result step()
     {
         if (halted())
-            return {false, false};
+            return {.success = false, .tapeExpanded = false};
         ++_steps;
-        return {true, _tape.step(peek())};
+        return {.success = true, .tapeExpanded = _tape.step(peek())};
     }
 
     /// Resets this Turing machine to the given tape and step 0, but keeps the rule.

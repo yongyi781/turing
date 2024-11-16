@@ -1,5 +1,5 @@
 param (
-    [Parameter(Position=0)]
+    [Parameter(Position = 0)]
     [string]$File,
     [Parameter(ValueFromRemainingArguments)]
     [string[]]$Args,
@@ -43,13 +43,7 @@ $clangArgs = $(
     "-march=native",
     "-pthread",
     "-isystem",
-    "C:\tools\primecount\include",
-    "-isystem",
     "C:/Projects/euler/include",
-    "-L",
-    "C:\tools\primecount\lib",
-    "-L",
-    "C:\tools\ntl\lib",
     "$File",
     "-o",
     "$outputFile",
@@ -60,7 +54,8 @@ $clangArgs = $(
 $buildMessage = "Building in $mode mode"
 if ($usePch) {
     $clangArgs += "-include-pch", ($mode + "\euler.pch")
-} else {
+}
+else {
     $buildMessage += " without PCH"
 }
 if ($stack) {
@@ -95,7 +90,8 @@ function Build-File {
         $color = $success ? "Green" : "Red"
         Write-Host -ForegroundColor $color "Build $($success ? "succeeded" : "failed") in $("{0:0.00} s" -f ($buildEndTime - $buildStartTime).TotalSeconds)."
         return $success
-    } else {
+    }
+    else {
         return $true
     }
 }

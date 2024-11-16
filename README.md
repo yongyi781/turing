@@ -3,7 +3,6 @@ Some fast C++ code for Turing machine enumeration and analysis. Work in progress
 
 ## Dependencies
 * https://github.com/yongyi781/euler
-  * TODO: Currently, euler has primecount as a dependency. Separate that out so this repository doesn't depend on primecount, since it doesn't use primecount.
 
 ## Features
 * turing.hpp -- main header file
@@ -13,4 +12,4 @@ Some fast C++ code for Turing machine enumeration and analysis. Work in progress
 * antihydra.cpp -- Just some [antihydra](https://wiki.bbchallenge.org/wiki/Antihydra) code
 * enumerate.cpp -- Turing machine enumeration by [Brady's algorithm](https://nickdrozd.github.io/2022/01/14/bradys-algorithm.html)
 * tape_growth.cpp -- Simulates a Turing machine and outputs between number of steps and tape size whenever the tape grows
-  
+

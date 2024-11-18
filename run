@@ -20,7 +20,7 @@ done
 
 # std=${2:-"c++26"}
 
-if grep -Pq "^#include \"(\.\./)?pch\.hpp\"" $file; then
+if grep -Eq "^#include \"(\.\./)?pch\.hpp\"" "$file"; then
     usePch=true
 fi
 
@@ -50,12 +50,12 @@ clangArgs=(
     "$file"
     "-o"
     "$outputFile"
-    "-ltbb12",
-    "-lgmp"
+    "-lstdc++exp"
+    "-ltbb12"
     "-Wl,-s"
 )
 if [[ $usePch == true ]]; then
-    clangArgs+=("-include-pch" "$mode/euler.pch")
+    clangArgs+=("-include-pch" "$mode/turing.pch")
 fi
 if [[ $verbose == true ]]; then
     clangArgs+=("-v")
@@ -68,7 +68,7 @@ if [[ $timeReport == true ]]; then
 fi
 
 build_file() {
-    if [[ $rebuild != true ]] then
+    if [[ $rebuild != true ]]; then
         if [[ -x "$outputFile" ]]; then
             last_build_time=$(stat -c %Y "$outputFile" 2>/dev/null || echo 0)
             source_time=$(stat -c %Y "$file")

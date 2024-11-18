@@ -83,15 +83,8 @@
 
 #include "dbg.hpp"
 
-// /** assert for debugging my own code */
-// #undef assert
-// #define assert(e) (void)((!!(e)) || (_assert(#e, __FILE__, __LINE__), 0))
-
 /// Shortcut to write one-line lambdas
 #define fun(var, ...) ([&](auto &&var) -> decltype(auto) { return __VA_ARGS__; })
 
 /// Shortcut to write one-line lambdas
 #define fun2(var1, var2, ...) ([&](auto &&var1, auto &&var2) -> decltype(auto) { return __VA_ARGS__; })
-
-/// Like the dbg! macro in Rust
-// #define dbg(...) cout << '(' << #__VA_ARGS__ << ") = " << tuple{__VA_ARGS__} << "\n";

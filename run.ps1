@@ -43,18 +43,17 @@ $clangArgs = $(
     "-march=native",
     "-pthread",
     "-isystem",
-    "C:/Projects/euler/include",
+    "../euler/include",
     "$File",
     "-o",
     "$outputFile",
     "-ltbb12",
-    "-lgmp",
     "-lstdc++exp",
     "-Wl,-s"
 )
 $buildMessage = "Building in $mode mode"
 if ($usePch) {
-    $clangArgs += "-include-pch", ($mode + "\euler.pch")
+    $clangArgs += "-include-pch", ($mode + "\turing.pch")
 }
 else {
     $buildMessage += " without PCH"

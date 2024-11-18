@@ -58,7 +58,6 @@ class turing_rule
             return;
         std::istringstream ss(code);
         std::string token;
-        const std::vector<std::string> rows;
         size_t i = 0;
         for (; std::getline(ss, token, '_') && i < maxStates; ++i)
         {
@@ -73,7 +72,7 @@ class turing_rule
             {
                 auto triple = token.substr(3 * j, 3);
                 if (triple[2] == '-')
-                    _data[i][j] = transition{.symbol = 1, .direction = direction::right, .toState = -1};
+                    _data[i][j] = {.symbol = 1, .direction = direction::right, .toState = -1};
                 else
                 {
                     const symbol_type symbol = triple[0] - '0';
@@ -82,9 +81,9 @@ class turing_rule
                         _nSymbols = 0;
                         return;
                     }
-                    _data[i][j] = transition{.symbol = (symbol_type)(triple[0] - '0'),
-                                             .direction = triple[1] == 'R' ? direction::right : direction::left,
-                                             .toState = (state_type)(triple[2] - 'A')};
+                    _data[i][j] = {.symbol = (symbol_type)(triple[0] - '0'),
+                                   .direction = triple[1] == 'R' ? direction::right : direction::left,
+                                   .toState = (state_type)(triple[2] - 'A')};
                 }
             }
         }
@@ -284,9 +283,16 @@ class Tape
     }
 
     /// Returns a string representation of this tape.
-    [[nodiscard]] constexpr std::string str(size_t width = defaultPrintWidth) const
+    [[nodiscard]] constexpr std::string str() const
     {
-        return strAux(width, true, ">", {});
+        std::string s{(char)(_state + 'A'), ' '};
+        for (int64_t i = _leftEdge; i <= rightEdge(); ++i)
+        {
+            if (i == _head)
+                s += ">";
+            s += (char)('0' + (*this)[i]);
+        }
+        return s;
     }
 
     /// Returns a string representation of this tape, colored for the terminal.
@@ -481,7 +487,7 @@ class TuringMachine
                 break;
     }
 
-    [[nodiscard]] std::string str(size_t width = Tape::defaultPrintWidth) const { return _tape.str(width); }
+    [[nodiscard]] std::string str() const { return _tape.str(); }
     [[nodiscard]] std::string prettyStr(size_t width = Tape::defaultPrintWidth) const { return _tape.prettyStr(width); }
 
   private:

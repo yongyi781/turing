@@ -49,6 +49,7 @@ $clangArgs = $(
     "$outputFile",
     "-ltbb12",
     "-lgmp",
+    "-lstdc++exp",
     "-Wl,-s"
 )
 $buildMessage = "Building in $mode mode"

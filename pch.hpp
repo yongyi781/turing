@@ -79,6 +79,8 @@
 #include <euler/it.hpp>
 #include <oklch.hpp>
 
+#include "turing.hpp"
+
 #include "dbg.hpp"
 
 // /** assert for debugging my own code */

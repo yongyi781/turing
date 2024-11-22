@@ -43,7 +43,6 @@ This code uses precompiled headers. Here's an example `tasks.json` file to get s
         "${file}",
         "-o",
         "${workspaceFolder}/release/${relativeFileDirname}/${fileBasenameNoExtension}.exe",
-        "-lstdc++exp",
         "-ltbb12",
         "-Wl,-s"
       ],
@@ -78,13 +77,7 @@ This code uses precompiled headers. Here's an example `tasks.json` file to get s
         "-DDEBUG",
         "-pthread",
         "-isystem",
-        "C:/tools/ntl/include",
-        "-isystem",
-        "C:/GitHub/cppitertools",
-        "-isystem",
         "../euler/include",
-        "-L",
-        "C:/tools/ntl/lib",
         "-include-pch",
         "${workspaceFolder}/debug/turing.pch",
         "-Wall",
@@ -98,7 +91,6 @@ This code uses precompiled headers. Here's an example `tasks.json` file to get s
         "${file}",
         "-o",
         "${workspaceFolder}/debug/${relativeFileDirname}/${fileBasenameNoExtension}.exe",
-        "-lstdc++exp",
         "-ltbb12",
       ],
       "icon": {
@@ -142,7 +134,6 @@ This code uses precompiled headers. Here's an example `tasks.json` file to get s
         "${file}",
         "-o",
         "${workspaceFolder}/debug/${relativeFileDirname}/${fileBasenameNoExtension}.exe",
-        "-lstdc++exp",
         "-ltbb12",
       ],
       "icon": {

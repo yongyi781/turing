@@ -15,7 +15,7 @@ Some fast C++ code for Turing machine enumeration and analysis. Work in progress
 * test/ &mdash; Tests
 
 ## Precompiled header
-This code uses precompiled headers. Here's an example `tasks.json` file to get started.
+This code uses precompiled headers. Here's an example `tasks.json` file to get started. If you are on Linux or Mac, you may want to remove the .exe extension from the output file names.
 ```json
 {
   "tasks": [
@@ -48,9 +48,6 @@ This code uses precompiled headers. Here's an example `tasks.json` file to get s
       ],
       "icon": {
         "color": "terminal.ansiCyan"
-      },
-      "options": {
-        "cwd": "${fileDirname}"
       },
       "group": {
         "kind": "build",
@@ -96,9 +93,6 @@ This code uses precompiled headers. Here's an example `tasks.json` file to get s
       "icon": {
         "color": "terminal.ansiRed"
       },
-      "options": {
-        "cwd": "${fileDirname}"
-      },
       "group": {
         "kind": "build"
       },
@@ -138,9 +132,6 @@ This code uses precompiled headers. Here's an example `tasks.json` file to get s
       ],
       "icon": {
         "color": "terminal.ansiCyan"
-      },
-      "options": {
-        "cwd": "${fileDirname}"
       },
       "group": "build",
       "presentation": {
@@ -183,9 +174,6 @@ This code uses precompiled headers. Here's an example `tasks.json` file to get s
       "icon": {
         "color": "terminal.ansiBlue"
       },
-      "options": {
-        "cwd": "${fileDirname}",
-      },
       "group": "build",
       "presentation": {
         "close": true
@@ -215,9 +203,6 @@ This code uses precompiled headers. Here's an example `tasks.json` file to get s
       ],
       "icon": {
         "color": "terminal.ansiBlue"
-      },
-      "options": {
-        "cwd": "${fileDirname}"
       },
       "group": "build",
       "presentation": {

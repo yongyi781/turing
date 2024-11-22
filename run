@@ -51,7 +51,7 @@ clangArgs=(
     "-o"
     "$outputFile"
     "-lstdc++exp"
-    "-ltbb12"
+    "-ltbb"
     "-Wl,-s"
 )
 if [[ $usePch == true ]]; then

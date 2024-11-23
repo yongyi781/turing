@@ -1,5 +1,8 @@
 #include "pch.hpp"
 
+#undef fun
+#include <boost/multiprecision/gmp.hpp>
+
 using namespace std;
 
 auto run()

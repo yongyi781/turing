@@ -32,7 +32,7 @@ template <typename T, typename U> void assertEqual(const T &actual, const U &exp
         else
             message += to_string(expected) + ", got " + to_string(actual);
         fail(message);
-        assert(false);
+        throw std::logic_error("Test failed");
     }
 }
 

@@ -19,6 +19,7 @@ add_subdirectory(test)
 set(targets
     analyze
     enumerate
+    simulate
     tape_growth
     tape_size
     transcript)

@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 Usage: ./run transcript <TM> [n]
 
 Arguments:
-  <TM>  The Turing machine.
+  <TM>  The Turing machine
   [n]   Number of steps (default: 1000)
 
 Options:

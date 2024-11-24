@@ -9,6 +9,7 @@ include_directories(SYSTEM ../euler/include)
 add_library(pch pch.cpp)
 target_precompile_headers(pch PRIVATE pch.hpp)
 target_compile_options(pch PRIVATE -fpch-instantiate-templates)
+include(CTest)
 enable_testing()
 
 add_subdirectory(decide)

@@ -90,9 +90,9 @@ class BouncerDecider
             for (size_t i = 0; i < w.size() - 1; ++i)
                 w[i] = w[i + 1] - w[i];
             w.pop_back();
-            // Check if w is constant
-            if (std::ranges::equal(std::ranges::subrange(w.begin(), w.end() - 1),
-                                   std::ranges::subrange(w.begin() + 1, w.end())))
+            // Check if w is constant and that the coefficient is positive
+            if (w.front() > 0 && std::ranges::equal(std::ranges::subrange(w.begin(), w.end() - 1),
+                                                    std::ranges::subrange(w.begin() + 1, w.end())))
             {
                 if (_verbose)
                     std::cout << "w = " << w << '\n';

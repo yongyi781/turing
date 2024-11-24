@@ -66,7 +66,7 @@ inline bool isPeriodic(TuringMachine m, size_t period)
     return high;
 }
 
-struct find_period_result
+struct cycler_result
 {
     size_t period = 0;
     size_t preperiod = 0;
@@ -83,7 +83,7 @@ class CyclerDecider
     [[nodiscard]] constexpr bool verbose() const { return _verbose; }
 
     [[nodiscard]]
-    find_period_result findPeriodOnly(TuringMachine machine, size_t maxSteps, size_t startPeriodBound = 100) const
+    cycler_result findPeriodOnly(TuringMachine machine, size_t maxSteps, size_t startPeriodBound = 100) const
     {
         size_t periodBound = startPeriodBound;
         TuringMachine prev2 = machine;
@@ -118,8 +118,8 @@ class CyclerDecider
 
     /// The main period detection function. Returns (period, preperiod, offset).
     template <typename Self>
-    [[nodiscard]] find_period_result find(this const Self &self, TuringMachine machine, size_t maxSteps,
-                                          size_t startPeriodBound = 100)
+    [[nodiscard]] cycler_result find(this const Self &self, TuringMachine machine, size_t maxSteps,
+                                     size_t startPeriodBound = 100)
     {
         auto res = self.findPeriodOnly(machine, maxSteps, startPeriodBound);
         if (res.period == 0)
@@ -152,7 +152,7 @@ class TranslatedCyclerDecider : public CyclerDecider
     /// Finds a period for the given Turing machine rule code with the given period bound. The returned preperiod is
     /// only an upper bound.
     [[nodiscard]]
-    find_period_result findPeriodOnly(TuringMachine machine, size_t maxSteps, size_t startPeriodBound = 1000) const
+    cycler_result findPeriodOnly(TuringMachine machine, size_t maxSteps, size_t startPeriodBound = 1000) const
     {
         size_t periodBound = startPeriodBound;
         size_t prevPeriodBound = 0;

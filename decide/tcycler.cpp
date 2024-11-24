@@ -10,7 +10,7 @@ using namespace turing;
 
 void run(turing_rule rule, size_t numSteps, size_t initialPeriodBound, bool fast, bool verbose)
 {
-    find_period_result res;
+    cycler_result res;
     if (fast)
         res = TranslatedCyclerDecider{verbose}.findPeriodOnly(rule, numSteps, initialPeriodBound);
     else

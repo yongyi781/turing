@@ -39,8 +39,9 @@ string R(size_t n, size_t m)
     static boost::unordered_flat_map<pair<size_t, size_t>, string> cache;
     if (auto it = cache.find({n, m}); it != cache.end())
         return it->second;
-    return cache[{n, m}] = R(n - 1, m) + repeat(" D0", pow(2LL, n - 1) + m + 1) + " D1" +
-                           repeat(" A1", pow(2LL, n) - 1) + " " + R(n - 1, 0) + " D1 " + R(n - 1, m + pow(2LL, n - 1));
+    return cache[{n, m}] = R(n - 1, m) + repeat(" D0", euler::pow(2LL, n - 1) + m + 1) + " D1" +
+                           repeat(" A1", euler::pow(2LL, n) - 1) + " " + R(n - 1, 0) + " D1 " +
+                           R(n - 1, m + euler::pow(2LL, n - 1));
 }
 
 auto solve()
@@ -53,7 +54,7 @@ auto solve()
         if (r.size() > t.size())
             break;
         size_t const size = (r.size() + 1) / 3;
-        size_t const calcSize = 2 * pow(4LL, n) + 4 * pow(3LL, n) - 2 * pow(2LL, n) - 1;
+        size_t const calcSize = 2 * euler::pow(4LL, n) + 4 * euler::pow(3LL, n) - 2 * euler::pow(2LL, n) - 1;
         assertEqual(r, t.substr(0, r.size()));
         assertEqual(size, calcSize);
         pass(to_string(n) + " " + to_string(size));

@@ -39,8 +39,9 @@ string R(size_t n, size_t m)
     static boost::unordered_flat_map<pair<size_t, size_t>, string> cache;
     if (auto it = cache.find({n, m}); it != cache.end())
         return it->second;
-    return cache[{n, m}] = R(n - 1, m) + repeat(" D0", pow(2LL, n - 1) + m + 1) + " D1" +
-                           repeat(" A1", pow(2LL, n) - 1) + " " + R(n - 1, 0) + " D1 " + R(n - 1, m + pow(2LL, n - 1));
+    return cache[{n, m}] = R(n - 1, m) + repeat(" D0", euler::pow(2LL, n - 1) + m + 1) + " D1" +
+                           repeat(" A1", euler::pow(2LL, n) - 1) + " " + R(n - 1, 0) + " D1 " +
+                           R(n - 1, m + euler::pow(2LL, n - 1));
 }
 
 auto solve()

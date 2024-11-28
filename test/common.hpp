@@ -26,14 +26,13 @@ template <typename T, typename U> void assertEqual(const T &actual, const U &exp
 
     if (Tp(actual) != Tp(expected))
     {
-        std::string message = "Expected ";
-        if constexpr (is_string<Tp>)
-            message += expected + std::string{", got "} + actual;
-        else if constexpr (std::same_as<Tp, bool>)
-            message += expected ? "true, got false" : "false, got true";
+        std::ostringstream ostr;
+        ostr << "Expected ";
+        if constexpr (std::same_as<Tp, bool>)
+            ostr << (expected ? "true, got false" : "false, got true");
         else
-            message += to_string(expected) + ", got " + to_string(actual);
-        fail(message);
+            ostr << expected << ", got " << actual;
+        fail(ostr.view());
         throw std::logic_error("Test failed");
     }
 }

@@ -1,6 +1,6 @@
 #include "../pch.hpp"
 
-#include "tests_common.hpp"
+#include "common.hpp"
 
 using namespace std;
 using namespace turing;

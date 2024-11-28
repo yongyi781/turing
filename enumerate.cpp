@@ -81,7 +81,7 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
 {
     auto nextIsHalt = [](const TuringMachine &m) { return m.peek().toState == -1; };
     turing_rule r(nStates, nSymbols);
-    r[0, 0] = {1, direction::right, 1};
+    r[0, 0] = {.symbol = 1, .direction = direction::right, .toState = 1};
     TuringMachine root{r};
     root.step();
     return it::tree_preorder(
@@ -115,7 +115,7 @@ template <typename Callback> bool enumTMs(int nStates, int nSymbols, size_t maxS
         auto &&[m, hSymbol, hState] = t;
         if (!nextIsHalt(m) &&
             (m.rule().filled() || (m.steps() == maxSteps && hSymbol == nSymbols - 1 && hState == nStates - 1)))
-            if (!it::callbackResult(f, std::forward<decltype(m)>(m)))
+            if (!it::callbackResult(f, m))
                 return it::result_break;
         return it::result_continue;
     });

@@ -22,6 +22,8 @@ inline std::string to_string(const std::vector<turing::symbol_type> &v)
 template <typename T, typename U> void assertEqual(const T &actual, const U &expected)
 {
     using Tp = std::common_type_t<T, U>;
+    using std::to_string;
+
     if (Tp(actual) != Tp(expected))
     {
         std::string message = "Expected ";

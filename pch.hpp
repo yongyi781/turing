@@ -70,6 +70,7 @@
 #include <print>
 #include <ranges>
 #include <span>
+#include <syncstream>
 
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>

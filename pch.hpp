@@ -77,7 +77,8 @@
 
 #include <ansi.hpp>
 #include <euler/algorithm.hpp>
-#include <euler/it.hpp>
+#include <euler/it/lines.hpp>
+#include <euler/it/tree.hpp>
 #include <oklch.hpp>
 
 #include "turing.hpp"

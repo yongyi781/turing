@@ -1,6 +1,7 @@
 #include "pch.hpp"
 
 using namespace std;
+using namespace euler;
 using namespace turing;
 
 auto run(turing_rule rule, size_t numSteps, bool verbose)

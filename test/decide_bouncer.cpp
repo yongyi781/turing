@@ -4,6 +4,7 @@
 #include "common.hpp"
 
 using namespace std;
+using namespace euler;
 using namespace turing;
 using Int = int64_t;
 

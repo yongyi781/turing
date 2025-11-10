@@ -4,6 +4,7 @@
 #include "decide/tcycler.hpp"
 
 using namespace std;
+using namespace euler;
 using namespace turing;
 
 constexpr size_t defaultMaxSteps(int nStates, int nSymbols)

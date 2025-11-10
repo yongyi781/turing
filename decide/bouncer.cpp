@@ -6,6 +6,7 @@
 #include "bouncer.hpp"
 
 using namespace std;
+using namespace euler;
 using namespace turing;
 
 void run(turing_rule rule, size_t degree, size_t numSteps, size_t maxPeriod, size_t confidenceLevel, bool verbose)

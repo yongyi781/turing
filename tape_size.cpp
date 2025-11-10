@@ -2,6 +2,7 @@
 #include "turing.hpp"
 
 using namespace std;
+using namespace euler;
 using namespace turing;
 
 double interpolateTapeSize(TuringMachine m, size_t steps)

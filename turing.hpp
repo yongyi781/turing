@@ -11,6 +11,13 @@
 #include <boost/container_hash/hash.hpp>
 #include <euler/algorithm.hpp>
 
+/// Calculates ⌊a / b⌋, and works for negative values too.
+template <euler::integral2 Ta, euler::integral2 Tb> constexpr auto floor_div(const Ta &a, const Tb &b)
+{
+    auto const d = a / b;
+    return d * b == a ? d : d - ((a < 0) ^ (b < 0));
+}
+
 namespace turing
 {
 using symbol_type = uint8_t;
@@ -361,7 +368,7 @@ class Tape
         if (printState)
             s += (char)(_state + 'A');
         const int64_t shift = width / 2;
-        const int64_t start = width * floorDiv((int64_t)(_head + shift), (int64_t)width) - shift;
+        const int64_t start = width * floor_div((int64_t)(_head + shift), (int64_t)width) - shift;
         for (int64_t i = start; i < (int64_t)(start + width); ++i)
         {
             if (i == _head)
@@ -381,7 +388,7 @@ inline turing_rule lexicalNormalForm(const turing_rule &rule)
     if (rule.numStates() <= 3) // nothing to do.
         return rule;
     // Don't worry about symbols yet
-    auto statePerm = range((state_type)0, (state_type)(rule.numStates() - 1));
+    auto statePerm = euler::range((state_type)0, (state_type)(rule.numStates() - 1));
     auto highestUsedState = rule[0, 0].toState;
     for (state_type i = 0; i < (state_type)rule.numStates(); ++i)
     {

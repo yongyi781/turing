@@ -6,6 +6,7 @@
 #include "tcycler.hpp"
 
 using namespace std;
+using namespace euler;
 using namespace turing;
 
 void run(turing_rule rule, size_t numSteps, size_t initialPeriodBound, bool fast, bool verbose)

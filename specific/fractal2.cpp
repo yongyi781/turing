@@ -4,6 +4,7 @@
 #include "../turing.hpp"
 
 using namespace std;
+using namespace euler;
 using namespace turing;
 
 string transcript(turing_rule rule, size_t numSteps)

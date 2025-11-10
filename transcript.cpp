@@ -4,6 +4,7 @@
 #include "turing.hpp"
 
 using namespace std;
+using namespace euler;
 using namespace turing;
 
 void run(turing_rule rule, size_t numSteps, bool noBlanks, state_type breakState, symbol_type breakSymbol)
